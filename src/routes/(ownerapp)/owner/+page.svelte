@@ -21,6 +21,7 @@
 <script>
   import { onMount, onDestroy } from "svelte";
   import { invalidate } from "$app/navigation";
+  import { dev } from "$app/environment";
 
   let { data } = $props();
 
@@ -56,6 +57,7 @@
   let syncSource;
 
   onMount(() => {
+    if (!dev) return; // Only enable live sync in development for now, to avoid unnecessary complexity and potential issues in production.
     syncSource = new EventSource("/api/sync");
 
     syncSource.addEventListener("sync", async (event) => {

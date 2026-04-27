@@ -1,6 +1,18 @@
+import { json } from '@sveltejs/kit';
+import { dev } from '$app/environment';
 import { addSyncClient } from '$lib/server/sync-hub.js';
 
 export function GET() {
+  // Vercel/serverless production must NOT keep SSE streams open.
+  // Dev server is a normal long-running Node process, so SSE is fine there.
+  if (!dev) {
+    return json({
+      ok: false,
+      disabled: true,
+      reason: 'SSE sync is enabled only during local development.',
+    });
+  }
+
   const encoder = new TextEncoder();
 
   let closed = false;

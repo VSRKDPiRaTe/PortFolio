@@ -59,6 +59,7 @@
 -->
 
 <script>
+  import { dev } from "$app/environment";
   // ── Global Styles ─────────────────────────────────────────────────
   // app.css is imported here — the root layout — so it applies to
   // every page automatically. Contains:
@@ -192,6 +193,7 @@
   let syncSource;
 
   onMount(() => {
+    if (!dev) return; // Only enable live sync in development for now, to avoid unnecessary complexity and potential issues in production.
     syncSource = new EventSource("/api/sync");
 
     syncSource.addEventListener("sync", async (event) => {
