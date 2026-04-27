@@ -87,3 +87,4 @@ tempScripts
 .vscode
 
 local.db
+local-dump.sql

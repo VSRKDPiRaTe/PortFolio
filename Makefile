@@ -66,16 +66,15 @@ TURSO_DB_NAME ?= portfolio
 
 
 # ── Terminal Colours ───────────────────────────────────────────────
-# ANSI escape codes for coloured terminal output.
-# \033[ = escape sequence start, m = end, 0m = reset all styles
-# 0;36m = cyan, 0;32m = green, 0;31m = red, 1;33m = yellow bold
+# These are used to make the output of the Makefile more readable and visually appealing.
+# They use ANSI escape codes via the tput command, which should work on most Unix-like terminals.
 
-CYAN   := \033[0;36m
-GREEN  := \033[0;32m
-RED    := \033[0;31m
-YELLOW := \033[1;33m
-BOLD   := \033[1m
-RESET  := \033[0m
+CYAN   := $(shell tput setaf 6)
+GREEN  := $(shell tput setaf 2)
+RED    := $(shell tput setaf 1)
+YELLOW := $(shell tput setaf 3)
+BOLD   := $(shell tput bold)
+RESET  := $(shell tput sgr0)
 
 # ── .PHONY Declaration ─────────────────────────────────────────────
 # Tells Make that these are COMMANDS, not file names.

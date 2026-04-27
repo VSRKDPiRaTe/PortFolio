@@ -12,7 +12,7 @@
 //      These are factual groupings that never change in meaning,
 //      only the owner can add/rename additional tabs later.
 //
-//   2. skills (optional) — reads from src/lib/data/skills.json
+//   2. skills (optional) — reads from skills.json
 //      if the file exists. This is a temporary convenience for the
 //      initial setup. Once the owner interface is working and the
 //      owner has entered real skills, this file can be deleted
@@ -65,10 +65,10 @@ async function seedTabs() {
 }
 
 // ── Skills (optional) ─────────────────────────────────────────────
-// Seeds from src/lib/data/skills.json if it exists.
+// Seeds from skills.json if it exists.
 // If the file does not exist, this step is skipped silently.
 async function seedSkills() {
-  const skillsPath = resolve("src/lib/data/skills.json");
+  const skillsPath = resolve("skills.json");
 
   if (!existsSync(skillsPath)) {
     console.log("\nNo skills.json found — skipping skill seed.");
