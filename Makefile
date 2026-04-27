@@ -21,15 +21,23 @@
 #   make sync-env               push .env.production vars → Vercel
 #   make deploy msg="..."       full deploy: env + commit + push
 #   make deploy-preview         deploy to preview URL only (safe)
-#   make git-setup remote=...   first-time Git repo initialisation
+#   make repo-settings          update GitHub repo description/homepage/topics
+#   make repo-open              open GitHub repo in browser
 #   make git-status             show current git status at a glance
+#   make db-prod-shell          open Turso production DB shell
 #
-# REQUIREMENTS:
-#   - Node.js >=20 (node --version)
-#   - npm >=10    (npm --version)
-#   - Git         (git --version)
-#   - Vercel CLI  (vercel --version) ← install: npm i -g vercel
+# IMPORTANT:
+#   .env.production is NEVER committed.
+#   This Makefile reads .env.production locally and pushes those values
+#   into Vercel using the Vercel CLI.
 # ═══════════════════════════════════════════════════════════════════
+
+
+# ── Shell ──────────────────────────────────────────────────────────
+# Some commands below use bash features such as [[ ... ]].
+# Explicitly setting SHELL avoids Make using /bin/sh on systems where
+# /bin/sh is more limited.
+SHELL := /bin/bash
 
 
 # ── Configuration ──────────────────────────────────────────────────
@@ -41,30 +49,21 @@ ENV_PROD_FILE := .env.production
 ENV_DEV_FILE  := .env.development
 BUILD_DIR     := .svelte-kit
 
-# ── GitHub Repository Metadata ─────────────────────────────────────
-# Used by make repo-settings.
+# ── Turso Database ─────────────────────────────────────────────────
+# Used by:
+#   make db-prod-shell
 #
-# GITHUB_REPO:
-#   Format: owner/repo
-#   Example: VSRKDPiRaTe/portfolio
+# Local development uses:
+#   TURSO_DB_URL=file:local.db
 #
-# REPO_TOPICS:
-#   Comma-separated topics. GitHub topics should be lowercase and hyphenated.
-GITHUB_REPO  ?=
-REPO_DESC    ?= Cyberpunk SvelteKit portfolio with owner dashboard, GitHub repo sync, analytics, and live content management.
-REPO_HOME    ?=
-REPO_TOPICS  ?= sveltekit,portfolio,vercel,turso,github-api,cyberpunk,full-stack
-
-# ── Turso Database Deployment ──────────────────────────────────────
-# Used by make db-prod-schema and make db-prod-shell.
+# Production uses:
+#   TURSO_DB_URL=libsql://...
 #
-# TURSO_DB_NAME:
-#   Name of the production Turso database.
-#
-# DB_SCHEMA_FILE:
-#   Schema file to run against Turso.
+# This Makefile does NOT automatically overwrite Turso with local.db.
+# That should stay a deliberate/manual action so production data is not
+# accidentally replaced.
 TURSO_DB_NAME ?= portfolio
-DB_SCHEMA_FILE := scripts/schema.sql
+
 
 # ── Terminal Colours ───────────────────────────────────────────────
 # ANSI escape codes for coloured terminal output.
@@ -84,7 +83,7 @@ RESET  := \033[0m
 # Make would think the target is already satisfied and skip it.
 # Rule: every target that isn't generating a real file goes here.
 
-.PHONY: help dev check build preview clean sync-env deploy deploy-preview git-setup git-status repo-settings repo-open db-prod-schema db-prod-shell
+.PHONY: help dev check build preview clean sync-env deploy deploy-preview git-status repo-settings repo-open db-prod-shell
 
 
 # ════════════════════════════════════════════════════════════════════
@@ -101,32 +100,29 @@ help:
 	@echo "$(BOLD)Development$(RESET)"
 	@echo "  $(GREEN)make dev$(RESET)                    Start local dev server (hot reload)"
 	@echo "  $(GREEN)make check$(RESET)                  Run Svelte static analysis"
-	@echo "  $(GREEN)make build$(RESET)                  Build for production locally"
-	@echo "  $(GREEN)make preview$(RESET)                Preview production build at localhost"
+	@echo "  $(GREEN)make build$(RESET)                  Run check + production build"
+	@echo "  $(GREEN)make preview$(RESET)                Preview production build locally"
 	@echo "  $(GREEN)make clean$(RESET)                  Remove all build artifacts"
 	@echo ""
-	@echo "$(BOLD)Deployment$(RESET)"
-	@echo "  $(GREEN)make sync-env$(RESET)               Push .env.production → Vercel"
-	@echo "  $(GREEN)make deploy msg='feat: ...'$(RESET)  Sync env + commit + push to GitHub"
-	@echo "  $(GREEN)make deploy-preview$(RESET)         Deploy to preview URL (not production)"
+	@echo "$(BOLD)Vercel / Deployment$(RESET)"
+	@echo "  $(GREEN)make sync-env$(RESET)               Push .env.production → Vercel production"
+	@echo "  $(GREEN)make deploy-preview$(RESET)         Deploy current code to Vercel preview URL"
+	@echo "  $(GREEN)make deploy msg='feat: ...'$(RESET)  Check + build + sync env + commit + push"
 	@echo ""
-	@echo "$(BOLD)Database$(RESET)"
-	@echo "  $(GREEN)make db-prod-schema TURSO_DB_NAME=name$(RESET)"
-	@echo "                                Run scripts/schema.sql on Turso production DB"
-	@echo "  $(GREEN)make db-prod-shell TURSO_DB_NAME=name$(RESET)"
-	@echo "                                Open Turso DB shell"
+	@echo "$(BOLD)GitHub Repo Settings$(RESET)"
+	@echo "  $(GREEN)make repo-settings$(RESET)          Update repo description, website, and topics"
+	@echo "  $(GREEN)make repo-open$(RESET)              Open GitHub repo in browser"
 	@echo ""
 	@echo "$(BOLD)Git$(RESET)"
-	@echo "  $(GREEN)make git-setup remote=URL$(RESET)   First-time repo init + push to GitHub"
-	@echo "  $(GREEN)make git-status$(RESET)             Show current branch, status, and log"
+	@echo "  $(GREEN)make git-status$(RESET)             Show branch, changed files, recent commits"
 	@echo ""
-	@echo "  $(GREEN)make repo-settings GITHUB_REPO=owner/repo REPO_HOME=https://site.com$(RESET)"
-	@echo "                                      Update GitHub repo description, homepage, topics"
-	@echo "  $(GREEN)make repo-open$(RESET)                Open GitHub repo in browser"
+	@echo "$(BOLD)Database$(RESET)"
+	@echo "  $(GREEN)make db-prod-shell$(RESET)          Open Turso production DB shell"
 	@echo ""
 	@echo "$(BOLD)Examples$(RESET)"
-	@echo "  make deploy msg=\"feat: add GitHub API integration\""
-	@echo "  make git-setup remote=https://github.com/yourusername/portfolio.git"
+	@echo "  make sync-env"
+	@echo "  make repo-settings"
+	@echo "  make deploy msg=\"feat: production-ready portfolio\""
 	@echo ""
 
 
@@ -148,7 +144,7 @@ dev:
 check:
 	@echo "$(CYAN)Running Svelte static analysis...$(RESET)"
 	npm run check
-	@echo "$(GREEN)✓ No errors found$(RESET)"
+	@echo "$(GREEN)✓ Check complete$(RESET)"
 
 
 # Compiles your app for production into the .svelte-kit/output folder.
@@ -163,7 +159,7 @@ build: check
 # Useful to verify the real build works, not just the dev server.
 # Runs on http://localhost:4173 (different port from dev's 5173).
 preview: build
-	@echo "$(CYAN)Previewing production build at http://localhost:4173$(RESET)"
+	@echo "$(CYAN)Previewing production build locally...$(RESET)"
 	npm run preview
 
 
@@ -177,25 +173,37 @@ clean:
 
 
 # ════════════════════════════════════════════════════════════════════
-# ENVIRONMENT VARIABLES & DEPLOYMENT
+# VERCEL ENVIRONMENT VARIABLES
 # ════════════════════════════════════════════════════════════════════
 
-# Pushes all variables from .env.production to Vercel's production
-# environment. Runs before every deploy so Vercel always has the
-# latest values at build time.
+# Pushes all variables from .env.production to Vercel's production environment.
+# Runs before deployment so Vercel has the latest values at build/runtime.
 #
-# How it works:
-#   1. Reads each line from .env.production
-#   2. Skips blank lines and comments (lines starting with #)
-#   3. Removes the old value from Vercel (if it exists)
-#   4. Pushes the new value to Vercel production environment
+# WHY THIS EXISTS:
+#   .env.production stays local and private.
+#   Vercel still needs those same values during production build/runtime.
 #
-# Requires: vercel CLI logged in (run `vercel login` once)
+# WHAT IT DOES:
+#   1. Checks .env.production exists.
+#   2. Checks Vercel CLI is installed.
+#   3. Checks this folder is linked to a Vercel project.
+#   4. Reads each non-comment line from .env.production.
+#   5. Removes existing production env vars with the same names.
+#   6. Adds fresh values to Vercel production.
+#
+# SUPPORTED .env FORMAT:
+#   KEY=value
+#   KEY="value"
+#   KEY='value'
+#   # comments ignored
+#
+# NOTE:
+#   After changing production env vars, Vercel needs a new deployment for
+#   the new values to affect production.
 sync-env:
 	@echo "$(CYAN)Syncing $(ENV_PROD_FILE) → Vercel production...$(RESET)"
-	@if [ ! -f $(ENV_PROD_FILE) ]; then \
+	@if [ ! -f "$(ENV_PROD_FILE)" ]; then \
 		echo "$(RED)✗ Error: $(ENV_PROD_FILE) not found.$(RESET)"; \
-		echo "  Create it first: cp .env.example .env.production"; \
 		exit 1; \
 	fi
 	@if ! command -v vercel &> /dev/null; then \
@@ -203,30 +211,46 @@ sync-env:
 		echo "  Install it: npm install -g vercel"; \
 		exit 1; \
 	fi
-	@echo "$(CYAN)  Removing existing Vercel production vars...$(RESET)"
-	@grep -v '^#' $(ENV_PROD_FILE) | grep -v '^$$' | cut -d= -f1 | while read key; do \
-		vercel env rm $$key production --yes 2>/dev/null || true; \
-	done
-	@echo "$(CYAN)  Pushing new vars to Vercel...$(RESET)"
-	@grep -v '^#' $(ENV_PROD_FILE) | grep -v '^$$' | while IFS='=' read -r key value; do \
-		echo "    → $$key"; \
-		printf '%s' "$$value" | vercel env add $$key production; \
-	done
+	@if [ ! -d ".vercel" ]; then \
+		echo "$(RED)✗ Error: Project is not linked to Vercel.$(RESET)"; \
+		echo "  Run: vercel link"; \
+		exit 1; \
+	fi
+	@echo "$(CYAN)Reading env keys from $(ENV_PROD_FILE)...$(RESET)"
+	@while IFS='=' read -r key value || [ -n "$$key" ]; do \
+		key="$$(echo "$$key" | xargs)"; \
+		value="$$(echo "$$value" | sed -e 's/^"//' -e 's/"$$//' -e "s/^'//" -e "s/'$$//")"; \
+		if [[ -z "$$key" || "$$key" == \#* ]]; then \
+			continue; \
+		fi; \
+		echo "$(YELLOW)→ Syncing $$key$(RESET)"; \
+		vercel env rm "$$key" production --yes >/dev/null 2>&1 || true; \
+		printf '%s' "$$value" | vercel env add "$$key" production >/dev/null; \
+	done < "$(ENV_PROD_FILE)"
 	@echo "$(GREEN)✓ Env vars synced to Vercel production$(RESET)"
 
 
-# Full production deployment in one command.
+# ════════════════════════════════════════════════════════════════════
+# DEPLOYMENT
+# ════════════════════════════════════════════════════════════════════
+
+# Full production release flow.
 #
-# Flow:
-#   1. Validate a commit message was provided
-#   2. Run static analysis (catch errors before they hit prod)
-#   3. Sync .env.production vars to Vercel
-#   4. Stage ALL changes (git add .)
-#   5. Commit with your message
-#   6. Push to GitHub main branch
-#   7. Vercel detects the push and auto-builds + deploys
+# WHAT IT DOES:
+#   1. Requires commit message.
+#   2. Runs check.
+#   3. Runs build.
+#   4. Syncs .env.production to Vercel.
+#   5. Stages code.
+#   6. Commits code.
+#   7. Pushes to GitHub.
 #
-# Usage: make deploy msg="feat: add GitHub API integration"
+# WHAT HAPPENS AFTER PUSH:
+#   Vercel sees the GitHub push and automatically deploys production.
+#
+# USAGE:
+#   make deploy msg="feat: update portfolio"
+#
 # Commit message convention:
 #   feat:     new feature
 #   fix:      bug fix
@@ -241,22 +265,21 @@ deploy:
 		exit 1; \
 	fi
 	@echo ""
-	@echo "$(BOLD)$(CYAN)Starting deployment pipeline...$(RESET)"
+	@echo "$(BOLD)$(CYAN)Starting production deploy pipeline...$(RESET)"
 	@echo ""
-	@echo "$(CYAN)Step 1/5 — Running static analysis...$(RESET)"
-	@$(MAKE) check --no-print-directory
-	@echo "$(CYAN)Step 2/5 — Syncing env vars to Vercel...$(RESET)"
+	@echo "$(CYAN)Step 1/5 — Check + build...$(RESET)"
+	@$(MAKE) build --no-print-directory
+	@echo "$(CYAN)Step 2/5 — Sync Vercel env vars...$(RESET)"
 	@$(MAKE) sync-env --no-print-directory
-	@echo "$(CYAN)Step 3/5 — Staging all changes...$(RESET)"
+	@echo "$(CYAN)Step 3/5 — Stage changes...$(RESET)"
 	git add .
-	@echo "$(CYAN)Step 4/5 — Committing: \"$(msg)\"$(RESET)"
+	@echo "$(CYAN)Step 4/5 — Commit changes...$(RESET)"
 	git commit -m "$(msg)"
-	@echo "$(CYAN)Step 5/5 — Pushing to GitHub (branch: $(BRANCH))...$(RESET)"
+	@echo "$(CYAN)Step 5/5 — Push to GitHub branch: $(BRANCH)...$(RESET)"
 	git push origin $(BRANCH)
 	@echo ""
-	@echo "$(GREEN)$(BOLD)✓ Deployment triggered!$(RESET)"
-	@echo "$(GREEN)  Vercel is building now — track progress at:$(RESET)"
-	@echo "$(GREEN)  https://vercel.com/dashboard$(RESET)"
+	@echo "$(GREEN)$(BOLD)✓ Push complete. Vercel deployment triggered.$(RESET)"
+	@echo "$(GREEN)Open Vercel dashboard to watch build logs.$(RESET)"
 	@echo ""
 
 
@@ -264,32 +287,62 @@ deploy:
 # Use this to share a live link for review before going to prod.
 # Each preview gets a unique URL like: portfolio-abc123.vercel.app
 deploy-preview:
-	@echo "$(CYAN)Deploying to preview (not production)...$(RESET)"
+	@echo "$(CYAN)Deploying preview to Vercel...$(RESET)"
 	vercel
-	@echo "$(GREEN)✓ Preview deployed. Check the URL above.$(RESET)"
+	@echo "$(GREEN)✓ Preview deploy complete$(RESET)"
+	@echo "$(GREEN)✓ Check the URL above.$(RESET)"
 
 # ════════════════════════════════════════════════════════════════════
 # GITHUB REPOSITORY METADATA
 # ════════════════════════════════════════════════════════════════════
-
-# Updates GitHub repository metadata:
-#   - description
-#   - website / homepage
-#   - topics
 #
-# This is useful because the GitHub repo "About" panel is part of the
-# portfolio presentation. Recruiters often see this before opening code.
+# GITHUB_REPO:
+#   Format: owner/repo
+#   Example: VSRKDPiRaTe/portfolio
 #
-# Requires:
+# REPO_DESC:
+#   Text shown in GitHub's repo About panel.
+#
+# REPO_HOME:
+#   Website URL shown in GitHub's repo About panel.
+#   Keep this updated when Vercel gives you a final/custom domain.
+#
+# REPO_TOPICS:
+#   Comma-separated topics. GitHub topics should be lowercase and hyphenated.
+GITHUB_REPO  ?= VSRKDPiRaTe/portfolio
+#
+# Reads repo metadata from .env.repo.local instead of hardcoding.
+#
+# FILE STRUCTURE (.env.repo.local):
+#   REPO_DESC=...
+#   REPO_HOME=...
+#   REPO_TOPICS=a,b,c
+#
+# WHY:
+#   - Keeps Makefile clean
+#   - Keeps repo metadata private/local
+#   - Easily editable without touching code
+#
+# REQUIREMENTS:
 #   gh CLI installed and logged in:
 #     gh auth login
 #
-# Usage:
-#   make repo-settings GITHUB_REPO=VSRKDPiRaTe/portfolio REPO_HOME=https://your-site.vercel.app
+# USAGE:
+#   make repo-settings
+#
+# OPTIONAL:
+#   Override file:
+#     make repo-settings REPO_ENV_FILE=.env.repo.local
+#
+REPO_ENV_FILE ?= .env.repo.local
+
 repo-settings:
-	@if [ -z "$(GITHUB_REPO)" ]; then \
-		echo "$(RED)✗ Error: GITHUB_REPO is required.$(RESET)"; \
-		echo "  Usage: make repo-settings GITHUB_REPO=owner/repo REPO_HOME=https://your-site.vercel.app"; \
+	@if [ ! -f "$(REPO_ENV_FILE)" ]; then \
+		echo "$(RED)✗ Error: $(REPO_ENV_FILE) not found.$(RESET)"; \
+		echo "  Create $(REPO_ENV_FILE) with:"; \
+		echo "    REPO_DESC=..."; \
+		echo "    REPO_HOME=..."; \
+		echo "    REPO_TOPICS=sveltekit,portfolio,vercel"; \
 		exit 1; \
 	fi
 	@if ! command -v gh &> /dev/null; then \
@@ -297,100 +350,32 @@ repo-settings:
 		echo "  Install it: https://cli.github.com"; \
 		exit 1; \
 	fi
-	@echo "$(CYAN)Updating GitHub repo settings for $(GITHUB_REPO)...$(RESET)"
-	gh repo edit $(GITHUB_REPO) \
-		--description "$(REPO_DESC)" \
-		--homepage "$(REPO_HOME)" \
-		--add-topic "$(REPO_TOPICS)"
+	@echo "$(CYAN)Reading repo metadata from $(REPO_ENV_FILE)...$(RESET)"
+	@set -a; source "$(REPO_ENV_FILE)"; set +a; \
+	echo "$(CYAN)Updating repo: $(GITHUB_REPO)$(RESET)"; \
+	echo "$(CYAN)  Description: $$REPO_DESC$(RESET)"; \
+	echo "$(CYAN)  Homepage:    $$REPO_HOME$(RESET)"; \
+	echo "$(CYAN)  Topics:      $$REPO_TOPICS$(RESET)"; \
+	gh repo edit "$(GITHUB_REPO)" \
+		--description "$$REPO_DESC" \
+		--homepage "$$REPO_HOME" \
+		--add-topic "$$REPO_TOPICS"
 	@echo "$(GREEN)✓ GitHub repo settings updated$(RESET)"
 
 
 # Opens the GitHub repository in the browser.
-# If GITHUB_REPO is provided, opens that repo.
-# Otherwise gh uses the current folder's origin remote.
+# Uses GITHUB_REPO from the config section above.
 repo-open:
 	@if ! command -v gh &> /dev/null; then \
 		echo "$(RED)✗ Error: GitHub CLI not installed.$(RESET)"; \
 		exit 1; \
 	fi
-	@if [ -z "$(GITHUB_REPO)" ]; then \
-		gh repo view --web; \
-	else \
-		gh repo view $(GITHUB_REPO) --web; \
-	fi
+	gh repo view $(GITHUB_REPO) --web
+
 
 # ════════════════════════════════════════════════════════════════════
-# GIT SETUP & STATUS
+# GIT STATUS
 # ════════════════════════════════════════════════════════════════════
-
-# Initialises a Git repo and pushes to GitHub for the FIRST TIME.
-# Run this ONCE when setting up the project — never again after that.
-#
-# What it does:
-#   1. Checks your git identity is configured (name + email)
-#   2. Checks the remote URL was provided
-#   3. Initialises git in this folder (git init)
-#   4. Stages everything except git-ignored files
-#   5. Makes the initial commit
-#   6. Renames branch to main (git default is still master on some systems)
-#   7. Adds your GitHub repo as the remote origin
-#   8. Pushes everything up
-#
-# Usage:
-#   make git-setup remote=https://github.com/yourusername/portfolio.git
-#
-# Before running:
-#   1. Create an EMPTY repo on github.com (no README, no .gitignore)
-#   2. Copy the HTTPS URL from GitHub
-#   3. Run this command with that URL
-git-setup:
-	@echo "$(CYAN)Checking git configuration...$(RESET)"
-	@if [ -z "$(remote)" ]; then \
-		echo "$(RED)✗ Error: GitHub remote URL required.$(RESET)"; \
-		echo "  Usage: make git-setup remote=https://github.com/yourusername/portfolio.git"; \
-		echo "  Step 1: Create an EMPTY repo at github.com (no README, no .gitignore)"; \
-		echo "  Step 2: Copy the HTTPS URL and run this command"; \
-		exit 1; \
-	fi
-	@GIT_NAME=$$(git config --global user.name); \
-	GIT_EMAIL=$$(git config --global user.email); \
-	if [ -z "$$GIT_NAME" ] || [ -z "$$GIT_EMAIL" ]; then \
-		echo "$(RED)✗ Error: Git identity not configured.$(RESET)"; \
-		echo "  Run these first:"; \
-		echo "    git config --global user.name \"Your Name\""; \
-		echo "    git config --global user.email \"your@email.com\""; \
-		exit 1; \
-	fi; \
-	echo "$(GREEN)  Git identity: $$GIT_NAME <$$GIT_EMAIL>$(RESET)"
-	@if [ -d .git ]; then \
-		echo "$(YELLOW)  Warning: .git already exists — skipping git init$(RESET)"; \
-	else \
-		echo "$(CYAN)Initialising git repository...$(RESET)"; \
-		git init; \
-	fi
-	@echo "$(CYAN)Staging all files...$(RESET)"
-	git add .
-	@echo "$(CYAN)Creating initial commit...$(RESET)"
-	git commit -m "chore: initial commit"
-	@echo "$(CYAN)Setting branch to main...$(RESET)"
-	git branch -M main
-	@if git remote get-url origin 2>/dev/null; then \
-		echo "$(YELLOW)  Remote 'origin' already exists — updating URL$(RESET)"; \
-		git remote set-url origin $(remote); \
-	else \
-		echo "$(CYAN)Adding remote origin...$(RESET)"; \
-		git remote add origin $(remote); \
-	fi
-	@echo "$(CYAN)Pushing to GitHub...$(RESET)"
-	git push -u origin main
-	@echo ""
-	@echo "$(GREEN)$(BOLD)✓ Repository live on GitHub!$(RESET)"
-	@echo "$(GREEN)  Next steps:$(RESET)"
-	@echo "$(GREEN)  1. Go to vercel.com → New Project$(RESET)"
-	@echo "$(GREEN)  2. Import your portfolio repo from GitHub$(RESET)"
-	@echo "$(GREEN)  3. Vercel auto-detects SvelteKit — just click Deploy$(RESET)"
-	@echo ""
-
 
 # Shows a quick summary of your current Git state.
 # Useful before deploying to see exactly what's changed.
@@ -408,40 +393,24 @@ git-status:
 	@git log --oneline -5 2>/dev/null || echo "  No commits yet"
 	@echo ""
 
+
 # ════════════════════════════════════════════════════════════════════
 # TURSO DATABASE
 # ════════════════════════════════════════════════════════════════════
 
-# Runs the schema file against the production Turso database.
+# Opens an interactive Turso shell for the production database.
 #
-# This creates/updates tables and indexes defined in scripts/schema.sql.
-# It does NOT import local data unless your schema file contains inserts.
+# This is intentionally manual. We do NOT auto-overwrite Turso from local.db
+# in the normal deploy command because production may contain real analytics
+# or owner edits that should not be replaced accidentally.
 #
 # Requires:
 #   turso CLI installed and logged in:
 #     turso auth login
 #
 # Usage:
-#   make db-prod-schema TURSO_DB_NAME=portfolio
-db-prod-schema:
-	@if [ ! -f $(DB_SCHEMA_FILE) ]; then \
-		echo "$(RED)✗ Error: $(DB_SCHEMA_FILE) not found.$(RESET)"; \
-		exit 1; \
-	fi
-	@if ! command -v turso &> /dev/null; then \
-		echo "$(RED)✗ Error: Turso CLI not installed.$(RESET)"; \
-		echo "  Install: curl -sSfL https://get.tur.so/install.sh | bash"; \
-		exit 1; \
-	fi
-	@echo "$(CYAN)Running $(DB_SCHEMA_FILE) on Turso DB: $(TURSO_DB_NAME)...$(RESET)"
-	turso db shell $(TURSO_DB_NAME) < $(DB_SCHEMA_FILE)
-	@echo "$(GREEN)✓ Turso schema applied$(RESET)"
-
-
-# Opens an interactive Turso shell.
-#
-# Usage:
-#   make db-prod-shell TURSO_DB_NAME=portfolio
+#   make db-prod-shell
+#   make db-prod-shell TURSO_DB_NAME=another-db-name
 db-prod-shell:
 	@if ! command -v turso &> /dev/null; then \
 		echo "$(RED)✗ Error: Turso CLI not installed.$(RESET)"; \
