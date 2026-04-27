@@ -1,0 +1,37 @@
+{
+  "extends": "./.svelte-kit/tsconfig.json",
+
+  "compilerOptions": {
+    // ── allowJs ─────────────────────────────────────────────────
+    // Lets TypeScript tooling understand plain .js files (not just .ts).
+    // Since we chose no TypeScript, all our files are .js and .svelte.
+    "allowJs": true,
+
+    // ── checkJs ─────────────────────────────────────────────────
+    // When false: VS Code shows intellisense/autocomplete but does NOT
+    // underline every JS file with type errors. Best setting for a
+    // JS-only project — you get the help without the noise.
+    // Flip to true later if you want strict type checking.
+    "checkJs": false,
+
+    // ── moduleResolution ─────────────────────────────────────────
+    // "bundler" tells TypeScript to resolve imports the same way
+    // Vite (your bundler) does — supports bare imports, $lib alias,
+    // and modern ESM patterns without needing file extensions.
+    "moduleResolution": "bundler",
+
+    // ── types ────────────────────────────────────────────────────
+    // Explicitly tells TypeScript which global type definitions to load.
+    // Empty array = load NOTHING automatically.
+    // This fixes the "cannot find type definition for node" error —
+    // that error happens because .svelte-kit/tsconfig.json references
+    // @types/node but we have not installed it. Overriding with []
+    // tells VS Code to stop looking for it.
+    "types": []
+  }
+
+  // ── Note on Path Aliases ──────────────────────────────────────
+  // $lib → src/lib/ is handled automatically by SvelteKit.
+  // Custom aliases go in svelte.config.js under kit.alias — not here.
+  // See: https://svelte.dev/docs/kit/configuration#alias
+}

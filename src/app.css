@@ -1,0 +1,544 @@
+/* ═══════════════════════════════════════════════════════════════════
+   app.css — GLOBAL STYLESHEET
+   This file is the foundation of your entire portfolio's visual style.
+   Imported ONCE in +layout.svelte — applies to EVERY page.
+
+   Structure:
+   1. Tailwind import
+   2. @theme block  (Tailwind v4 design tokens → utility classes)
+   3. :root block   (raw CSS variables for direct var() usage)
+   4. Base resets
+   5. Custom scrollbar
+   6. Keyframe animations
+   7. Scanlines overlay
+   8. Reusable utility classes
+═══════════════════════════════════════════════════════════════════ */
+
+
+/* ── 1. TAILWIND IMPORT ─────────────────────────────────────────────
+   Single line replaces Tailwind v3's three-line system:
+     @tailwind base;
+     @tailwind components;
+     @tailwind utilities;
+
+   Tailwind v4 does all three in one @import.
+   Loads ALL utility classes (flex, grid, text-sm etc.) so you can
+   use them directly in .svelte files without any configuration.
+─────────────────────────────────────────────────────────────────── */
+@import "tailwindcss";
+
+
+/* ── 2. @THEME BLOCK — Tailwind v4 Design Tokens ────────────────────
+   Tailwind v4's replacement for tailwind.config.js.
+   Values registered here become usable Tailwind utility classes.
+
+   --color-cyan    → class="text-cyan" or class="bg-cyan"
+   --color-bg      → class="bg-bg"
+   --font-display  → class="font-display"
+   --animate-blink → class="animate-blink"
+
+   Any value NOT expressible as a utility class (like box-shadows)
+   goes in :root below instead.
+─────────────────────────────────────────────────────────────────── */
+@theme {
+
+   /* ── COLORS ──────────────────────────────────────────────────────
+     Cyberpunk palette: deep space backgrounds + neon accents.
+     TODO: Tweak these hex values to personalise your color scheme.
+  ─────────────────────────────────────────────────────────────────── */
+   --color-bg: #02040a;
+   /* Deepest black — main page background */
+   --color-bg2: #060c1a;
+   /* Slightly lighter — alternate section background */
+   --color-bg3: #0b1428;
+   /* Lightest dark — card / terminal backgrounds */
+   --color-cyan: #00f5ff;
+   /* Primary neon — brand color, borders, highlights */
+   --color-cyan2: #00c8d4;
+   /* Dimmer cyan — scrollbar, subtle accents */
+   --color-magenta: #ff00c8;
+   /* Secondary neon — tags, hover states, glitch effect */
+   --color-ngreen: #00ff88;
+   /* Success / active / terminal prompt green */
+   --color-nyellow: #ffe600;
+   /* Warning / featured badge yellow */
+   --color-nred: #ff2a6d;
+   /* Error / close button / danger red */
+   --color-text-dim: #a8b8d8;
+   /* Default body text — muted blue-grey */
+   --color-text-hi: #e0eaff;
+   /* Highlighted text — near-white with blue tint */
+
+   /* ── FONTS ───────────────────────────────────────────────────────
+     Three-font system. All loaded via Google Fonts in app.html.
+     Orbitron        → sci-fi display   → headings, logo, hero name
+     Share Tech Mono → terminal mono    → labels, buttons, tags, code
+     Rajdhani        → clean body font  → paragraphs, descriptions
+  ─────────────────────────────────────────────────────────────────── */
+   --font-display: 'Orbitron', monospace;
+   --font-mono: 'Share Tech Mono', monospace;
+   --font-body: 'Rajdhani', sans-serif;
+
+   /* ── ANIMATIONS ──────────────────────────────────────────────────
+     Registers animations as Tailwind utility classes.
+     @keyframes for each are defined in section 6 below.
+     Format: [keyframe-name] [duration] [easing] [iteration-count]
+
+     Usage: class="animate-blink" or class="animate-float"
+  ─────────────────────────────────────────────────────────────────── */
+   --animate-blink: blink 1s step-end infinite;
+   /* terminal cursor */
+   --animate-flicker: flicker 6s infinite;
+   /* neon sign flicker */
+   --animate-float: float 5s ease-in-out infinite;
+   /* avatar bob */
+   --animate-spin-slow: spin 20s linear infinite;
+   /* orbit ring */
+   --animate-scan: scan-line 4s linear infinite;
+   /* hero scan beam */
+   --animate-pulse-border: pulse-border 4s ease-in-out infinite;
+   /* terminal border */
+}
+
+
+/* ── 3. :ROOT BLOCK — Raw CSS Variables ─────────────────────────────
+   Standard CSS custom properties. NOT Tailwind tokens.
+
+   KEY DIFFERENCE:
+   @theme  → becomes class="text-cyan" (Tailwind utility)
+   :root   → used as var(--cyan) directly in CSS (for box-shadows,
+             inline styles, and <style> blocks inside components)
+
+   We need both because complex values like multi-layer box-shadows
+   can't be expressed as single Tailwind utility classes.
+─────────────────────────────────────────────────────────────────── */
+:root {
+   /* Short-name color aliases for convenient var() usage in CSS */
+   --cyan: #00f5ff;
+   --magenta: #ff00c8;
+   --green: #00ff88;
+   --red: #ff2a6d;
+   --yellow: #ffe600;
+
+   /* ── NEON GLOW SHADOWS ───────────────────────────────────────────
+     Multi-layer shadows that create the neon light bleeding effect.
+     Layer 1: tight bright core glow  (0 offset, 8px blur)
+     Layer 2: wide soft outer halo    (0 offset, 24px blur, 40% opacity)
+
+     Usage:
+       text-shadow:  var(--glow-c)   → glowing text
+       box-shadow:   var(--glow-c)   → glowing borders/buttons
+       inline style: style="box-shadow: var(--glow-c)"
+
+     -c = cyan, -m = magenta, -g = green
+  ─────────────────────────────────────────────────────────────────── */
+   --glow-c: 0 0 8px #00f5ff, 0 0 24px rgba(0, 245, 255, 0.4);
+   --glow-m: 0 0 8px #ff00c8, 0 0 24px rgba(255, 0, 200, 0.4);
+   --glow-g: 0 0 8px #00ff88, 0 0 24px rgba(0, 255, 136, 0.35);
+}
+
+
+/* ── 4. BASE RESETS ──────────────────────────────────────────────────
+   Normalises inconsistent browser default styles.
+   Without resets, padding/margins differ between Chrome, Firefox, Safari.
+─────────────────────────────────────────────────────────────────── */
+
+/* border-box: padding and border are INCLUDED in declared width/height.
+   Default (content-box) adds them ON TOP, causing layout surprises.
+   Applying to * = every element, *::before and *::after = pseudo-elements. */
+*,
+*::before,
+*::after {
+   box-sizing: border-box;
+}
+
+html {
+   scroll-behavior: smooth;
+   /* smooth scrolling for anchor links (#about, #skills etc.) */
+   background: #02040a;
+   /* prevents white flash during initial page load */
+}
+
+body {
+   margin: 0;
+   /* browsers add 8px margin by default — remove it */
+   font-family: 'Rajdhani', sans-serif;
+   /* base font for all text not explicitly styled */
+   color: #a8b8d8;
+   /* default text color — muted blue-grey */
+   font-size: 1.04rem;
+   line-height: 1.5;
+   overflow-x: hidden;
+   /* prevents horizontal scroll from off-screen animations */
+}
+
+
+/* ── 5. CUSTOM SCROLLBAR ─────────────────────────────────────────────
+   Styles the scrollbar to match the cyberpunk theme.
+
+   ::-webkit-scrollbar → Chrome, Edge, Safari (webkit browsers)
+   scrollbar-* props   → Firefox (different API, added below)
+─────────────────────────────────────────────────────────────────── */
+
+/* Webkit browsers (Chrome, Edge, Safari) */
+::-webkit-scrollbar {
+   width: 6px;
+}
+
+::-webkit-scrollbar-track {
+   background: #060c1a;
+}
+
+::-webkit-scrollbar-thumb {
+   background: #00c8d4;
+   border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+   background: #00f5ff;
+}
+
+/* Firefox — uses a simpler two-value API: thumb-color track-color */
+html {
+   scrollbar-width: thin;
+   scrollbar-color: #00c8d4 #060c1a;
+   /* thumb track */
+}
+
+
+/* ── 6. KEYFRAME ANIMATIONS ──────────────────────────────────────────
+   @keyframes define animation timelines referenced by name.
+   Used by:
+     - @theme --animate-* values (as Tailwind classes)
+     - Component <style> blocks (direct animation: property)
+     - Inline styles (less common)
+
+   Timeline: 0% = start state, 100% = end state, loops back.
+   Intermediate % values = keyframes (specific moments in time).
+─────────────────────────────────────────────────────────────────── */
+
+/* GLITCH — hero name effect. Simulates a broken CRT display.
+   clip-path: polygon() reveals only a horizontal slice of the element,
+   combined with position shifts to look like a signal glitch. */
+@keyframes glitch {
+
+   0%,
+   100% {
+      transform: translate(0);
+      clip-path: none;
+   }
+
+   10% {
+      transform: translate(-3px, 1px);
+      clip-path: polygon(0 20%, 100% 20%, 100% 35%, 0 35%);
+      color: var(--magenta);
+   }
+
+   20% {
+      transform: translate(3px, -1px);
+      clip-path: polygon(0 60%, 100% 60%, 100% 75%, 0 75%);
+      color: var(--cyan);
+   }
+
+   30% {
+      transform: translate(0);
+      clip-path: none;
+   }
+
+   70% {
+      transform: translate(2px, 0);
+      clip-path: polygon(0 40%, 100% 40%, 100% 45%, 0 45%);
+   }
+
+   80% {
+      transform: translate(-2px, 0);
+      clip-path: none;
+   }
+}
+
+/* GLITCH2 — second glitch layer offset by 0.3s for depth.
+   Simpler than glitch — just position + opacity + color flash. */
+@keyframes glitch2 {
+
+   0%,
+   100% {
+      transform: translate(0);
+      opacity: 1;
+   }
+
+   20% {
+      transform: translate(4px, -2px);
+      opacity: 0.8;
+      color: var(--cyan);
+   }
+
+   40% {
+      transform: translate(-4px, 2px);
+      opacity: 0.8;
+      color: var(--magenta);
+   }
+
+   60% {
+      transform: translate(0);
+      opacity: 1;
+   }
+}
+
+/* SCAN-LINE — horizontal light beam sweeping down the hero section.
+   Moves from -5% (above viewport) to 105% (below viewport). */
+@keyframes scan-line {
+   0% {
+      top: -5%;
+   }
+
+   100% {
+      top: 105%;
+   }
+}
+
+/* SPIN-CCW — counter-clockwise rotation for the middle orbit ring. */
+@keyframes spin-ccw {
+   from {
+      transform: rotate(0deg);
+   }
+
+   to {
+      transform: rotate(-360deg);
+   }
+}
+
+/* FADE-UP — used by the reveal.js Svelte action for scroll-reveal.
+   Elements slide up and fade in as they enter the viewport. */
+@keyframes fadeUp {
+   from {
+      opacity: 0;
+      transform: translateY(28px);
+   }
+
+   to {
+      opacity: 1;
+      transform: none;
+   }
+}
+
+/* BLINK — terminal cursor on/off effect.
+   step-end = instant snap (no fade between states), like a real cursor. */
+@keyframes blink {
+
+   0%,
+   100% {
+      opacity: 1;
+   }
+
+   50% {
+      opacity: 0;
+   }
+}
+
+/* FLICKER — faulty neon sign effect on the nav logo.
+   Stays mostly on (opacity 1) with brief random dips. */
+@keyframes flicker {
+
+   0%,
+   100% {
+      opacity: 1;
+   }
+
+   92% {
+      opacity: 1;
+   }
+
+   93% {
+      opacity: 0.6;
+   }
+
+   94% {
+      opacity: 1;
+   }
+
+   96% {
+      opacity: 0.8;
+   }
+
+   97% {
+      opacity: 1;
+   }
+}
+
+/* FLOAT — gentle vertical bob for the hero avatar circle. */
+@keyframes float {
+
+   0%,
+   100% {
+      transform: translateY(0);
+   }
+
+   50% {
+      transform: translateY(-12px);
+   }
+}
+
+/* PULSE-BORDER — terminal window border breathing glow effect.
+   Alternates between dim and bright cyan border. */
+@keyframes pulse-border {
+
+   0%,
+   100% {
+      border-color: rgba(0, 245, 255, 0.2);
+   }
+
+   50% {
+      border-color: rgba(0, 245, 255, 0.6);
+   }
+}
+
+
+/* ── 7. SCANLINES OVERLAY ────────────────────────────────────────────
+   CRT monitor texture applied over the ENTIRE page using body::after.
+
+   body::after = a pseudo-element (a "fake" DOM node) attached to body.
+   No extra HTML needed — CSS generates it automatically.
+
+   Key properties:
+   position:fixed + inset:0  → stretches to fill the full viewport always
+   z-index:9999              → renders above ALL content
+   pointer-events:none       → clicks pass through (UI still works)
+   repeating-linear-gradient → creates the horizontal scan line pattern:
+     0–3px = transparent gap, 3–4px = dark line, repeats forever
+   opacity:0.35              → subtle — just a hint of texture, not distracting
+─────────────────────────────────────────────────────────────────── */
+body::after {
+   content: '';
+   /* pseudo-elements need content: '' to render */
+   position: fixed;
+   inset: 0;
+   /* shorthand for top:0 right:0 bottom:0 left:0 */
+   pointer-events: none;
+   z-index: 9999;
+   background: repeating-linear-gradient(to bottom,
+         transparent 0px, transparent 3px,
+         /* invisible gap */
+         rgba(0, 0, 0, 0.07) 3px, rgba(0, 0, 0, 0.07) 4px
+         /* dark scan line */
+      );
+   opacity: 0.35;
+}
+
+
+/* ── 8. REUSABLE UTILITY CLASSES ─────────────────────────────────────
+   Custom CSS classes shared across multiple components.
+   Defined globally here so components don't duplicate styles.
+   These complement Tailwind — for patterns too complex for utilities.
+─────────────────────────────────────────────────────────────────── */
+
+/* BTN-ANGLED — base class for the signature parallelogram button shape.
+   clip-path polygon() defines 4 corner points:
+     top-left    = 12px inset from left
+     top-right   = full right edge
+     bottom-right= 12px inset from right
+     bottom-left = full left edge
+   Result: button with angled left and right edges. */
+.btn-angled {
+   display: inline-flex;
+   align-items: center;
+   gap: 0.5rem;
+   /* space between icon and label text */
+   font-family: 'Share Tech Mono', monospace;
+   font-size: 0.75rem;
+   letter-spacing: 0.12em;
+   /* wide tracking = military/tech label aesthetic */
+   text-transform: uppercase;
+   cursor: pointer;
+   transition: all 0.3s;
+   clip-path: polygon(12px 0%, 100% 0%, calc(100% - 12px) 100%, 0% 100%);
+}
+
+/* BTN-CYAN — primary filled button. Dark text on bright cyan background.
+   On hover: flips to magenta for a satisfying inversion effect. */
+.btn-cyan {
+   background: var(--cyan);
+   color: #02040a;
+   /* near-black text — readable on bright cyan */
+   padding: 0.75rem 2rem;
+   font-weight: 700;
+   box-shadow: var(--glow-c);
+   border: none;
+   text-decoration: none;
+   /* removes underline when used as <a> */
+}
+
+.btn-cyan:hover {
+   background: var(--magenta);
+   box-shadow: var(--glow-m);
+   transform: translateY(-2px);
+   /* subtle lift on hover */
+}
+
+/* BTN-OUTLINE — secondary ghost button. Transparent fill, cyan border. */
+.btn-outline {
+   border: 1px solid var(--cyan);
+   color: var(--cyan);
+   padding: 0.75rem 2rem;
+   background: transparent;
+   text-decoration: none;
+}
+
+.btn-outline:hover {
+   background: rgba(0, 245, 255, 0.1);
+   box-shadow: var(--glow-c);
+   transform: translateY(-2px);
+}
+
+/* SECTION-LABEL — small eyebrow tag above each section title.
+   e.g. "ABOUT.SYS", "SKILLS.DAT", "PROJECTS.SYS"
+   ::before adds a short glowing horizontal line to the left. */
+.section-label {
+   font-family: 'Share Tech Mono', monospace;
+   font-size: 0.72rem;
+   letter-spacing: 0.25em;
+   text-transform: uppercase;
+   color: var(--cyan);
+   display: flex;
+   align-items: center;
+   gap: 0.75rem;
+   margin-bottom: 0.5rem;
+}
+
+.section-label::before {
+   content: '';
+   display: block;
+   width: 40px;
+   height: 1px;
+   background: var(--cyan);
+   box-shadow: var(--glow-c);
+}
+
+/* NEON TEXT HELPERS — applies neon color + matching glow shadow.
+   Usage: class="neon-c" → cyan, "neon-m" → magenta, "neon-g" → green */
+.neon-c {
+   color: var(--cyan);
+   text-shadow: var(--glow-c);
+}
+
+.neon-m {
+   color: var(--magenta);
+   text-shadow: var(--glow-m);
+}
+
+.neon-g {
+   color: var(--green);
+   text-shadow: var(--glow-g);
+}
+
+/* TAG-PILL — technology tags on project cards. e.g. "REACT", "DOCKER"
+   Magenta text with faint magenta border — subtle but on-brand. */
+.tag-pill {
+   font-family: 'Share Tech Mono', monospace;
+   font-size: 0.62rem;
+   letter-spacing: 0.1em;
+   text-transform: uppercase;
+   padding: 0.2rem 0.55rem;
+   border: 1px solid rgba(255, 0, 200, 0.3);
+   /* 30% opacity magenta border */
+   color: var(--magenta);
+}

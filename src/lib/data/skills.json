@@ -1,0 +1,579 @@
+{
+  "tabs": [
+    {
+      "id": "languages",
+      "label": "LANGUAGES",
+      "sort_order": 0
+    },
+    {
+      "id": "frontend",
+      "label": "FRONTEND",
+      "sort_order": 1
+    },
+    {
+      "id": "mobile",
+      "label": "MOBILE",
+      "sort_order": 2
+
+    },
+    {
+      "id": "backend",
+      "label": "BACKEND & APIs",
+      "sort_order": 3
+    },
+    {
+      "id": "databases",
+      "label": "DATABASES",
+      "sort_order": 4
+    },
+    {
+      "id": "data",
+      "label": "DATA ENGINEERING",
+      "sort_order": 5
+
+    },
+    {
+      "id": "cloud",
+      "label": "CLOUD & DEVOPS",
+      "sort_order": 6
+
+    },
+    {
+      "id": "security",
+      "label": "SECURITY",
+      "sort_order": 7
+    },
+    {
+      "id": "testing",
+      "label": "TESTING",
+      "sort_order": 8
+    }
+  ],
+  "skills": {
+    "languages": [
+      {
+        "name": "TypeScript",
+        "pct": 92,
+        "primary": true
+      },
+      {
+        "name": "Python",
+        "pct": 90,
+        "primary": true
+      },
+      {
+        "name": "JavaScript",
+        "pct": 92,
+        "primary": true
+      },
+      {
+        "name": "C#",
+        "pct": 80,
+        "primary": true
+      },
+      {
+        "name": "Go (Golang)",
+        "pct": 82,
+        "primary": true
+      },
+      {
+        "name": "Dart",
+        "pct": 72,
+        "primary": true
+      },
+      {
+        "name": "Java",
+        "pct": 55,
+        "primary": false,
+        "exposure": true
+      },
+      {
+        "name": "Kotlin",
+        "pct": 45,
+        "primary": false,
+        "exposure": true
+      },
+      {
+        "name": "Rust",
+        "pct": 45,
+        "primary": false,
+        "exposure": true
+      },
+      {
+        "name": "R",
+        "pct": 40,
+        "primary": false,
+        "exposure": true
+      }
+    ],
+    "frontend": [
+      {
+        "name": "React",
+        "pct": 93,
+        "primary": true
+      },
+      {
+        "name": "Next.js",
+        "pct": 90,
+        "primary": true
+      },
+      {
+        "name": "Angular",
+        "pct": 82,
+        "primary": true
+      },
+      {
+        "name": "Vue.js",
+        "pct": 80,
+        "primary": true
+      },
+      {
+        "name": "Svelte / SvelteKit",
+        "pct": 75,
+        "primary": true
+      },
+      {
+        "name": "HTML5",
+        "pct": 95,
+        "primary": true
+      },
+      {
+        "name": "CSS3",
+        "pct": 92,
+        "primary": true
+      },
+      {
+        "name": "Tailwind CSS",
+        "pct": 90,
+        "primary": true
+      },
+      {
+        "name": "SCSS / Sass",
+        "pct": 85,
+        "primary": true
+      },
+      {
+        "name": "Bootstrap",
+        "pct": 82,
+        "primary": true
+      },
+      {
+        "name": "Material UI (MUI)",
+        "pct": 80,
+        "primary": true
+      },
+      {
+        "name": "Styled Components",
+        "pct": 78,
+        "primary": true
+      },
+      {
+        "name": "Flexbox / CSS Grid",
+        "pct": 90,
+        "primary": true
+      }
+    ],
+    "mobile": [
+      {
+        "name": "Flutter",
+        "pct": 78,
+        "primary": true
+      },
+      {
+        "name": "React Native",
+        "pct": 72,
+        "primary": true
+      },
+      {
+        "name": "Android (Dart)",
+        "pct": 72,
+        "primary": true
+      },
+      {
+        "name": "iOS (Dart)",
+        "pct": 68,
+        "primary": true
+      }
+    ],
+    "backend": [
+      {
+        "name": "ASP.NET Core",
+        "pct": 82,
+        "primary": true
+      },
+      {
+        "name": "Node.js / Express",
+        "pct": 88,
+        "primary": true
+      },
+      {
+        "name": "FastAPI",
+        "pct": 88,
+        "primary": true
+      },
+      {
+        "name": "Django",
+        "pct": 80,
+        "primary": true
+      },
+      {
+        "name": "Flask",
+        "pct": 78,
+        "primary": true
+      },
+      {
+        "name": "Gin / Echo / Mux",
+        "pct": 78,
+        "primary": true
+      },
+      {
+        "name": "Spring Boot",
+        "pct": 50,
+        "primary": false,
+        "exposure": true
+      },
+      {
+        "name": "Axum (Rust)",
+        "pct": 45,
+        "primary": false,
+        "exposure": true
+      },
+      {
+        "name": "REST APIs",
+        "pct": 95,
+        "primary": true
+      },
+      {
+        "name": "GraphQL",
+        "pct": 80,
+        "primary": true
+      },
+      {
+        "name": "gRPC",
+        "pct": 65,
+        "primary": false
+      },
+      {
+        "name": "WebSockets",
+        "pct": 75,
+        "primary": true
+      },
+      {
+        "name": "OpenAPI / Swagger",
+        "pct": 85,
+        "primary": true
+      },
+      {
+        "name": "Webhook Integration",
+        "pct": 82,
+        "primary": true
+      },
+      {
+        "name": "Entity Framework",
+        "pct": 80,
+        "primary": true
+      },
+      {
+        "name": "SQLAlchemy",
+        "pct": 82,
+        "primary": true
+      },
+      {
+        "name": "Prisma ORM",
+        "pct": 78,
+        "primary": true
+      },
+      {
+        "name": "GORM (Go)",
+        "pct": 75,
+        "primary": true
+      },
+      {
+        "name": "SeaORM (Rust)",
+        "pct": 40,
+        "primary": false,
+        "exposure": true
+      }
+    ],
+    "databases": [
+      {
+        "name": "PostgreSQL",
+        "pct": 88,
+        "primary": true
+      },
+      {
+        "name": "SQL Server",
+        "pct": 82,
+        "primary": true
+      },
+      {
+        "name": "MySQL",
+        "pct": 80,
+        "primary": true
+      },
+      {
+        "name": "SQLite",
+        "pct": 80,
+        "primary": true
+      },
+      {
+        "name": "MongoDB",
+        "pct": 78,
+        "primary": true
+      },
+      {
+        "name": "DynamoDB",
+        "pct": 65,
+        "primary": false
+      },
+      {
+        "name": "Redis",
+        "pct": 75,
+        "primary": true
+      },
+      {
+        "name": "Snowflake",
+        "pct": 68,
+        "primary": false
+      },
+      {
+        "name": "Azure Synapse",
+        "pct": 75,
+        "primary": true
+      }
+    ],
+    "data": [
+      {
+        "name": "Apache Kafka",
+        "pct": 80,
+        "primary": true
+      },
+      {
+        "name": "Azure Event Hubs",
+        "pct": 78,
+        "primary": true
+      },
+      {
+        "name": "AWS Glue",
+        "pct": 65,
+        "primary": false
+      },
+      {
+        "name": "Databricks",
+        "pct": 68,
+        "primary": false
+      },
+      {
+        "name": "Apache Spark",
+        "pct": 70,
+        "primary": true
+      },
+      {
+        "name": "Delta Lake",
+        "pct": 65,
+        "primary": false
+      },
+      {
+        "name": "Airflow",
+        "pct": 65,
+        "primary": false
+      },
+      {
+        "name": "dbt",
+        "pct": 65,
+        "primary": false
+      },
+      {
+        "name": "ETL Pipelines",
+        "pct": 85,
+        "primary": true
+      },
+      {
+        "name": "RabbitMQ",
+        "pct": 68,
+        "primary": false
+      },
+      {
+        "name": "AWS SQS",
+        "pct": 65,
+        "primary": false
+      },
+      {
+        "name": "Azure Service Bus",
+        "pct": 72,
+        "primary": true
+      },
+      {
+        "name": "Power BI",
+        "pct": 72,
+        "primary": true
+      },
+      {
+        "name": "Tableau",
+        "pct": 68,
+        "primary": false
+      },
+      {
+        "name": "Looker",
+        "pct": 60,
+        "primary": false
+      },
+      {
+        "name": "Grafana",
+        "pct": 70,
+        "primary": true
+      }
+    ],
+    "cloud": [
+      {
+        "name": "Microsoft Azure",
+        "pct": 85,
+        "primary": true
+      },
+      {
+        "name": "AWS",
+        "pct": 72,
+        "primary": true
+      },
+      {
+        "name": "Firebase",
+        "pct": 72,
+        "primary": true
+      },
+      {
+        "name": "Vercel",
+        "pct": 82,
+        "primary": true
+      },
+      {
+        "name": "Heroku",
+        "pct": 70,
+        "primary": false
+      },
+      {
+        "name": "Cloudflare",
+        "pct": 68,
+        "primary": false
+      },
+      {
+        "name": "Docker",
+        "pct": 85,
+        "primary": true
+      },
+      {
+        "name": "GitHub Actions",
+        "pct": 88,
+        "primary": true
+      },
+      {
+        "name": "Azure DevOps",
+        "pct": 82,
+        "primary": true
+      },
+      {
+        "name": "Prometheus",
+        "pct": 70,
+        "primary": false
+      },
+      {
+        "name": "Grafana",
+        "pct": 70,
+        "primary": true
+      },
+      {
+        "name": "Azure Monitor",
+        "pct": 72,
+        "primary": true
+      },
+      {
+        "name": "Datadog",
+        "pct": 65,
+        "primary": false
+      },
+      {
+        "name": "Agile / Scrum",
+        "pct": 88,
+        "primary": true
+      },
+      {
+        "name": "Jira / Confluence",
+        "pct": 85,
+        "primary": true
+      }
+    ],
+    "security": [
+      {
+        "name": "JWT",
+        "pct": 88,
+        "primary": true
+      },
+      {
+        "name": "OAuth 2.0",
+        "pct": 85,
+        "primary": true
+      },
+      {
+        "name": "Auth0",
+        "pct": 80,
+        "primary": true
+      },
+      {
+        "name": "HTTPS / SSL / TLS",
+        "pct": 82,
+        "primary": true
+      },
+      {
+        "name": "CORS / CSRF Protection",
+        "pct": 80,
+        "primary": true
+      },
+      {
+        "name": "Bcrypt / Argon2",
+        "pct": 78,
+        "primary": true
+      },
+      {
+        "name": "AES / RSA Encryption",
+        "pct": 72,
+        "primary": true
+      },
+      {
+        "name": "OWASP Top 10",
+        "pct": 80,
+        "primary": true
+      }
+    ],
+    "testing": [
+      {
+        "name": "Jest / Vitest",
+        "pct": 82,
+        "primary": true
+      },
+      {
+        "name": "React Testing Library",
+        "pct": 80,
+        "primary": true
+      },
+      {
+        "name": "PyTest",
+        "pct": 82,
+        "primary": true
+      },
+      {
+        "name": "Selenium",
+        "pct": 75,
+        "primary": true
+      },
+      {
+        "name": "Puppeteer",
+        "pct": 72,
+        "primary": true
+      },
+      {
+        "name": "OWASP ZAP",
+        "pct": 65,
+        "primary": false
+      }
+    ]
+  }
+}

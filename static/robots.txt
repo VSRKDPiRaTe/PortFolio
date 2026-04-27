@@ -1,0 +1,6 @@
+# Allow all search engines to crawl everything
+User-agent: *
+Disallow:
+
+# Sitemap location (helps Google find your pages faster)
+Sitemap: https://yourportfolio.vercel.app/sitemap.xml

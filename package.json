@@ -1,0 +1,58 @@
+{
+  "//name": "Project name — lowercase, no spaces.",
+  "name": "portfolio",
+  "//private": "Prevents accidental publish to npm. Always true for apps.",
+  "private": true,
+  "//version": "Semantic versioning: MAJOR.MINOR.PATCH.",
+  "version": "1.0.0",
+  "//type": "ES Modules — use import/export, not require().",
+  "type": "module",
+  "//scripts": [
+    "dev     → local dev server with hot reload",
+    "build   → compile for production",
+    "preview → preview production build locally",
+    "prepare → runs after npm install, syncs SvelteKit types",
+    "check   → static analysis, catch errors before deploying"
+  ],
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "prepare": "svelte-kit sync || echo ''",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json"
+  },
+  "//engines": [
+    "Enforces Node/npm versions. Works with engine-strict=true in .npmrc.",
+    "Vercel uses Node 20 by default — this matches."
+  ],
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "//devDependencies": [
+    "IMPORTANT: All @sveltejs/* packages must be compatible with each other.",
+    "adapter-vercel@5.x requires kit@^2.x — do not mix major versions.",
+    "",
+    "@sveltejs/adapter-vercel     → Vercel-specific adapter (explicit, faster than adapter-auto)",
+    "@sveltejs/kit                → SvelteKit framework (routing, SSR, build pipeline)",
+    "@sveltejs/vite-plugin-svelte → bridges Svelte compiler with Vite",
+    "@tailwindcss/vite            → Tailwind v4 Vite plugin",
+    "svelte                       → core Svelte 5 compiler",
+    "svelte-check                 → static analysis for .svelte files",
+    "tailwindcss                  → CSS utility framework",
+    "vite                         → build tool and dev server"
+  ],
+  "devDependencies": {
+    "@sveltejs/adapter-vercel": "5.7.2",
+    "@sveltejs/kit": "2.56.1",
+    "@sveltejs/vite-plugin-svelte": "6.2.4",
+    "@tailwindcss/vite": "4.1.18",
+    "svelte": "5.51.0",
+    "svelte-check": "4.2.0",
+    "tailwindcss": "4.1.18",
+    "vite": "7.3.1"
+  },
+  "dependencies": {
+    "@libsql/client": "0.17.2"
+  }
+}
