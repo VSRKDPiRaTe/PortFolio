@@ -4,9 +4,9 @@
   // Each card links to /projects/[slug] for full detail.
   import ProjectCard  from '$lib/components/ProjectCard.svelte';
   import { SITE_NAME } from '$lib/config';
-  import { mergedProjectsStore, groups, badges, getByGroup } from '$lib/data/projects.js';
+  import { projectsStore, groups, badges, getByGroup } from '$lib/data/projects.js';
 
-  const projects = $derived($mergedProjectsStore);
+  const projects = $derived($projectsStore);
 </script>
 
 

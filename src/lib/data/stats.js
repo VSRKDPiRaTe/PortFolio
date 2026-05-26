@@ -4,8 +4,8 @@
 //
 // WHAT THIS FILE IS:
 //   Computes the three animated stat counters shown in the Hero section:
-//     Years Experience  → derived from earliest job start date
-//     Projects Shipped  → derived from live merged project count
+//     Years Experience  → derived from experience start/end dates
+//     Projects Shipped  → derived from DB-backed project count
 //     Technologies      → derived from primary skills in the skills store
 //
 //   All three values are computed from real data — never hardcoded.
@@ -33,20 +33,35 @@
 //     3. the derived store below re-computes automatically
 //     4. Hero.svelte receives the updated stat array
 //
-//   This keeps the entire dependency chain reactive from source data
-//   all the way to the UI.
-//
-// WHEN TURSO REPLACES JSON FILES:
-//   Replace the upstream store population with DB-backed data sources.
-//   yearsFromISO(), buildStats(), and the final stat object shape can stay
-//   exactly the same. Hero.svelte also stays untouched.
+// CURRENT DATA ARCHITECTURE:
+//   Database is the source of truth.
+//   Owner Interface writes experience/projects/skills to DB.
+//   Public site reads DB-backed data into stores.
+//   This file computes stats from those stores.
 
 import { derived } from "svelte/store";
 import { skillsData, experienceData } from "$lib/stores/ui.js";
-import { mergedProjectsStore } from "$lib/data/projects.js";
+import { projectsStore } from "$lib/data/projects.js";
 
-// ── yearsFromISO ──────────────────────────────────────────────────
-// Converts an ISO date string ("YYYY-MM") into a display-ready
+// ── Date helpers ──────────────────────────────────────────────────
+// Converts "YYYY-MM" into a Date object.
+//
+// Returns null for invalid/missing dates so calculations can safely skip
+// broken rows instead of crashing the Hero section.
+function monthDate(isoMonth) {
+  if (!isoMonth || typeof isoMonth !== "string") return null;
+
+  const [year, month] = isoMonth.split("-").map(Number);
+
+  if (!Number.isFinite(year) || !Number.isFinite(month)) return null;
+  if (month < 1 || month > 12) return null;
+
+  // month - 1 because JavaScript Date months are 0-indexed.
+  return new Date(year, month - 1, 1);
+}
+
+// ── yearsFromStartDate ────────────────────────────────────────────
+// Converts an earliest start date into a display-ready
 // { target, suffix } pair for the animated counter.
 //
 // The suffix logic avoids both under-selling and over-selling:
@@ -57,21 +72,57 @@ import { mergedProjectsStore } from "$lib/data/projects.js";
 //   0.6 – 0.8      → "3.5+"           → past halfway, show 3.5 with +
 //   0.8 – 1.0      → "4"              → close enough to round up cleanly
 //
-// @param {string} isoDate — "YYYY-MM" format (e.g. "2022-06")
+// @param {Date} start — earliest valid job start date
 // @returns {{ target: number, suffix: string }}
-function yearsFromISO(isoDate) {
-  const [year, month] = isoDate.split("-").map(Number);
-
-  // month - 1 because JavaScript Date months are 0-indexed (January = 0)
-  const start = new Date(year, month - 1, 1);
+function yearsFromStartDate(start) {
   const now = new Date();
-  const raw = (now - start) / (1000 * 60 * 60 * 24 * 365);
+
+  if (!(start instanceof Date) || Number.isNaN(start.getTime())) {
+    return { target: 0, suffix: "+" };
+  }
+
+  const raw = Math.max(0, (now - start) / (1000 * 60 * 60 * 24 * 365.25));
+  const whole = Math.floor(raw);
   const decimal = raw % 1;
 
-  if (decimal < 0.4) return { target: Math.floor(raw), suffix: "+" };
-  if (decimal < 0.6) return { target: Math.floor(raw) + 0.5, suffix: "" };
-  if (decimal < 0.8) return { target: Math.floor(raw) + 0.5, suffix: "+" };
+  if (decimal < 0.4) return { target: whole, suffix: "+" };
+  if (decimal < 0.6) return { target: whole + 0.5, suffix: "" };
+  if (decimal < 0.8) return { target: whole + 0.5, suffix: "+" };
   return { target: Math.ceil(raw), suffix: "" };
+}
+
+// ── calculateExperienceYears ──────────────────────────────────────
+// Calculates total visible years of professional experience.
+//
+// CURRENT STRATEGY:
+//   Use the earliest valid startDate from all experience rows and count
+//   from that month until now.
+//
+// WHY NOT USE ARRAY POSITION:
+//   Experience array order can change depending on SQL ORDER BY,
+//   owner sorting, or newly inserted rows.
+//
+//   The old logic used:
+//     expEntries[expEntries.length - 1]
+//
+//   That only worked if the array was perfectly newest-first.
+//   This function is safer because it reads actual startDate values.
+//
+// WHY NOT SUM EVERY JOB DURATION:
+//   Summing durations can over-count if jobs overlap.
+//   For a portfolio headline stat, earliest professional start → present
+//   is usually the cleanest and most honest "Years Experience" number.
+function calculateExperienceYears(expEntries = []) {
+  const validStarts = (expEntries ?? [])
+    .map((entry) => monthDate(entry.startDate))
+    .filter(Boolean)
+    .sort((a, b) => a - b);
+
+  const earliestStart = validStarts[0];
+
+  return earliestStart
+    ? yearsFromStartDate(earliestStart)
+    : { target: 0, suffix: "+" };
 }
 
 // ── buildStats ────────────────────────────────────────────────────
@@ -85,14 +136,14 @@ function yearsFromISO(isoDate) {
 //   display shape used by the Hero counters.
 //
 // INPUTS:
-//   mergedProjects → already merged project list from projects.js
-//   skills         → grouped skills object from the skills store
-//   expEntries     → experience array from the experience store
+//   projects   → DB-backed project list from projects.js
+//   skills     → grouped skills object from the skills store
+//   expEntries → experience array from the experience store
 //
 // OUTPUT:
 //   Array of stat objects:
 //     { target, suffix, label, color }
-function buildStats(mergedProjects = [], skills = {}, expEntries = []) {
+function buildStats(projects = [], skills = {}, expEntries = []) {
   // ── techCount ───────────────────────────────────────────────────
   // Counts primary skills across all tabs.
   //
@@ -110,31 +161,20 @@ function buildStats(mergedProjects = [], skills = {}, expEntries = []) {
   // .length               → final count
   const techCount = Object.values(skills ?? {})
     .flat()
-    .filter((s) => s.primary && !s.exposure).length;
+    .filter((skill) => skill.primary && !skill.exposure).length;
 
   // ── projectCount ────────────────────────────────────────────────
-  // Live count of all projects — GitHub repos merged with manual entries.
+  // Live count of all DB-backed projects.
   //
-  // mergedProjects already includes:
-  //   GitHub repos         → personal projects (public + private)
-  //   Manual projects      → professional work (not on GitHub)
-  //   Slug matches         → manual data overriding GitHub display fields
-  //
-  // Because this function receives the merged array directly,
-  // counting projects is now a simple array length read.
-  const projectCount = mergedProjects.length;
+  // projects already includes:
+  //   GitHub-synced projects → source='github'
+  //   Manual projects        → source='manual'
+  const projectCount = projects.length;
 
   // ── yearsExp ────────────────────────────────────────────────────
-  // Uses the earliest experience entry to calculate total experience.
+  // Uses actual startDate values from all experience rows.
   //
-  // Experience data is ordered newest-first, so:
-  //   last entry = earliest role
-  //
-  // startDate format: "YYYY-MM"
-  const earliest = expEntries[expEntries.length - 1];
-  const { target: yearsTarget, suffix: yearsSuffix } = earliest
-    ? yearsFromISO(earliest.startDate)
-    : { target: 0, suffix: "+" };
+  const { target: yearsTarget, suffix: yearsSuffix } = calculateExperienceYears(expEntries);
 
   return [
     // Years of experience — approximate, uses dynamic suffix from yearsFromISO
@@ -169,7 +209,7 @@ function buildStats(mergedProjects = [], skills = {}, expEntries = []) {
 // Each object defines one stat counter:
 //   target → number the counter animates up to
 //   suffix → appended after the number in the display
-//              '+' = "at least this many" (approximate value)
+//              '+' = "at least this many" / approximate value
 //              ''  = exact count
 //   label  → small uppercase text shown below the counter
 //   color  → CSS utility class for neon colour
@@ -178,11 +218,11 @@ function buildStats(mergedProjects = [], skills = {}, expEntries = []) {
 //              'neon-g' = green
 //
 // WHY THIS IS A STORE:
-//   The source data arrives asynchronously through layout/store updates.
+//   Source data arrives asynchronously through layout/store updates.
 //   Exporting STATS as a derived store means any component can subscribe
-//   to it and always receive the latest computed values.
+//   and always receive the latest computed values.
 export const STATS = derived(
-  [mergedProjectsStore, skillsData, experienceData],
-  ([$mergedProjects, $skills, $experience]) =>
-    buildStats($mergedProjects ?? [], $skills ?? {}, $experience ?? [])
+  [projectsStore, skillsData, experienceData],
+  ([$projects, $skills, $experience]) =>
+    buildStats($projects ?? [], $skills ?? {}, $experience ?? [])
 );

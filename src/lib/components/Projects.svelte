@@ -2,13 +2,13 @@
   // ── Imports ───────────────────────────────────────────────────────
   import { reveal } from '$lib/actions/reveal.js';
   import ProjectCard from '$lib/components/ProjectCard.svelte';
-  import { groups, badges, mergedProjectsStore } from '$lib/data/projects.js';
+  import { groups, badges, projectsStore } from '$lib/data/projects.js';
 
   // ── Projects ──────────────────────────────────────────────────────
   // Subscribe to the live merged projects store instead of taking a
   // one-time snapshot. This keeps the UI in sync after refresh and
   // whenever the root layout repopulates the source stores.
-  let projects = $derived($mergedProjectsStore);
+  let projects = $derived($projectsStore);
 
   // Homepage shows first 3 projects from the merged array.
   // Control what appears here by reordering the upstream merged priority.

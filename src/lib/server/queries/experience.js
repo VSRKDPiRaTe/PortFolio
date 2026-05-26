@@ -40,11 +40,30 @@ function rowToJob(row) {
 
 // ── READ ──────────────────────────────────────────────────────────
 
-// Get all jobs ordered by sort_order (newest first = lowest sort_order).
+// Get all jobs ordered by real date, newest first.
+//
+// WHY NOT sort_order ONLY:
+//   sort_order is useful for manual display control, but experience should
+//   naturally display based on employment dates.
+//
+// ORDER LOGIC:
+//   1. Current jobs first
+//   2. Jobs with latest endDate next
+//   3. If endDate is NULL, use startDate as fallback
+//   4. Newer startDate wins when dates are similar
+//
+// This keeps public display and stats stable even if sort_order is missing,
+// duplicated, or not updated after owner edits.
 export async function getAllExperience() {
-  const result = await db.execute(
-    'SELECT * FROM experience ORDER BY sort_order DESC'
-  );
+  const result = await db.execute(`
+    SELECT *
+    FROM experience
+    ORDER BY
+      current DESC,
+      COALESCE(endDate, startDate) DESC,
+      startDate DESC
+  `);
+
   return result.rows.map(rowToJob);
 }
 

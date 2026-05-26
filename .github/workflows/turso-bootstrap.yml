@@ -4,11 +4,14 @@ on:
   push:
     branches:
       - main
+    paths:
+      - ".github/workflows/turso-bootstrap.yml"
+      - "scripts/**"
   workflow_dispatch:
 
 jobs:
   bootstrap-db:
-    name: Apply schema and seed Turso
+    name: Apply migrations, and seed Turso
     runs-on: ubuntu-latest
 
     env:
@@ -42,8 +45,8 @@ jobs:
 
           echo "Turso secrets are present"
 
-      - name: Apply database schema
-        run: node scripts/db-init.js
+      - name: Apply migrations
+        run: node scripts/migrate.js
 
       - name: Seed database
         run: node scripts/seed.js

@@ -58,7 +58,7 @@
   //   The Hero counters depend on data that arrives through stores:
   //     skillsData
   //     experienceData
-  //     mergedProjectsStore
+  //     projectsStore
   //
   //   A plain function call can run too early during SSR / refresh and
   //   capture empty initial values. A store keeps the full dependency

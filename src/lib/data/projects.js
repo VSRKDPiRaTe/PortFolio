@@ -32,11 +32,11 @@
 //   type requires a code change regardless, so they live here.
 //
 // USAGE IN COMPONENTS:
-//   import { groups, badges, mergedProjectsStore, getByGroup, getBySlug }
+//   import { groups, badges, projectsStore, getByGroup, getBySlug }
 //     from '$lib/data/projects.js'
 //
-//   In Svelte components, prefer mergedProjectsStore for reactivity.
-//   getMergedProjects() is kept as a snapshot helper for plain JS usage.
+//   In Svelte components, prefer projectsStore for reactivity.
+//   getProjects() is kept as a snapshot helper for plain JS usage.
 
 import { derived, get } from "svelte/store";
 import { projectsData } from '$lib/stores/ui.js';
@@ -167,25 +167,23 @@ function normaliseProject(project) {
   };
 }
 
-// ── mergedProjectsStore ───────────────────────────────────────────
+// ── projectsStore ───────────────────────────────────────────
 // Reactive project list used by Svelte components.
 //
-// Name kept as mergedProjectsStore for compatibility with existing
-// components, but it no longer performs a GitHub/manual merge.
-// It now means:
+// It means:
 //   "the final DB-backed project list ready for display".
-export const mergedProjectsStore = derived(projectsData, ($projects) =>
+export const projectsStore = derived(projectsData, ($projects) =>
   ($projects ?? []).map(normaliseProject),
 );
 
-// ── getMergedProjects ─────────────────────────────────────────────
+// ── getProjects ─────────────────────────────────────────────
 // Snapshot helper for plain JS usage.
 //
 // In Svelte components, prefer:
-//   $mergedProjectsStore
+//   $projectsStore
 //
 // In plain JS, use this when you only need the current value once.
-export function getMergedProjects() {
+export function getProjects() {
   return (get(projectsData) ?? []).map(normaliseProject);
 }
 
@@ -194,7 +192,7 @@ export function getMergedProjects() {
 // the store on every helper call.
 //
 // Pattern:
-//   const all = $mergedProjectsStore
+//   const all = $projectsStore
 //   const personal = getByGroup(all, 'personal')
 //   const project  = getBySlug(all, 'securetrack')
 

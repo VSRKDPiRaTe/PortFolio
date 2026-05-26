@@ -117,7 +117,7 @@
   // These stores are populated from DB-backed server data.
   //
   // Used by:
-  //   projects.js → reads via mergedProjectsStore
+  //   projects.js → reads via projectsStore
   //   stats.js    → derived stores react automatically
   //   components  → may subscribe directly if needed
   import {

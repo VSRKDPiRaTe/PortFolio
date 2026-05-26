@@ -25,12 +25,9 @@
 #   make repo-settings          update GitHub repo description/homepage/topics
 #   make repo-open              open GitHub repo in browser
 #   make git-status             show current git status at a glance
-#   make db-local-reset         delete local.db + recreate schema + seed
-#   make db-local-init          create local DB schema from schema.sql
+#   make db-local-reset         delete local.db + run migrations + seed
+#   make db-local-migrate       apply local pending migrations
 #   make db-local-seed          seed local DB tabs/skills
-#   make db-prod-schema         apply schema.sql to Turso production DB
-#   make db-prod-seed           seed Turso production DB tabs/skills
-#   make db-prod-bootstrap      Apply schema + seed to Turso production DB
 #   make db-prod-shell          open Turso production DB shell
 #
 # IMPORTANT:
@@ -57,7 +54,6 @@ ENV_DEV_FILE  := .env.development
 BUILD_DIR     := .svelte-kit
 
 LOCAL_DB_FILE   := local.db
-SCHEMA_FILE     := scripts/schema.sql
 SEED_FILE       := scripts/seed.js
 
 # ── Turso Database ─────────────────────────────────────────────────
@@ -93,8 +89,7 @@ RESET  := $(shell tput sgr0)
 # Make would think the target is already satisfied and skip it.
 # Rule: every target that isn't generating a real file goes here.
 
-.PHONY: help dev check build preview clean sync-env deploy deploy-preview git-status sync-github-secrets repo-settings repo-open db-local-reset db-local-init db-local-seed db-prod-schema db-prod-seed db-prod-bootstrap db-prod-shell
-
+.PHONY: help dev check build preview clean sync-env deploy deploy-preview git-status sync-github-secrets repo-settings repo-open db-local-reset db-local-migrate db-local-seed db-prod-shell
 
 # ════════════════════════════════════════════════════════════════════
 # HELP
@@ -128,12 +123,9 @@ help:
 	@echo "  $(GREEN)make git-status$(RESET)             Show branch, changed files, recent commits"
 	@echo ""
 	@echo "$(BOLD)Database$(RESET)"
-	@echo "  $(GREEN)make db-local-reset$(RESET)         Delete local.db + recreate schema + seed"
-	@echo "  $(GREEN)make db-local-init$(RESET)          Create local DB schema from schema.sql"
+	@echo "  $(GREEN)make db-local-reset$(RESET)         Delete local.db + run migrations + seed"
+	@echo "  $(GREEN)make db-local-migrate$(RESET)       Apply local pending migrations"
 	@echo "  $(GREEN)make db-local-seed$(RESET)          Seed local DB tabs/skills"
-	@echo "  $(GREEN)make db-prod-schema$(RESET)         Apply schema.sql to Turso production DB"
-	@echo "  $(GREEN)make db-prod-seed$(RESET)           Seed Turso production DB tabs/skills"
-	@echo "  $(GREEN)make db-prod-bootstrap$(RESET)      Apply schema + seed to Turso production DB"
 	@echo "  $(GREEN)make db-prod-shell$(RESET)          Open Turso production DB shell"
 	@echo ""
 	@echo "$(BOLD)Examples$(RESET)"
@@ -454,39 +446,46 @@ git-status:
 	@git log --oneline -5 2>/dev/null || echo "  No commits yet"
 	@echo ""
 
-
 # ════════════════════════════════════════════════════════════════════
 # DATABASE
 # ════════════════════════════════════════════════════════════════════
-# Recreates local.db from scratch.
+
+# Recreates local.db completely from scratch using migrations.
 #
-# Flow:
+# FLOW:
 #   1. Delete local.db
-#   2. Run schema.sql
-#   3. Run seed.js
+#   2. Apply all migrations in order
+#   3. Seed starter data
 #
-# Use this when you want a clean local database that matches the current
-# schema and starter skills.
+# USE THIS WHEN:
+#   - schema changes
+#   - testing fresh setup
+#   - validating migrations
+#   - onboarding another machine/dev
 db-local-reset:
 	@echo "$(YELLOW)Resetting local database: $(LOCAL_DB_FILE)...$(RESET)"
 	rm -f $(LOCAL_DB_FILE)
-	@$(MAKE) db-local-init --no-print-directory
+	@$(MAKE) db-local-migrate --no-print-directory
 	@$(MAKE) db-local-seed --no-print-directory
 	@echo "$(GREEN)✓ Local DB reset complete$(RESET)"
 
 
-# Creates local DB tables from scripts/schema.sql.
-db-local-init:
-	@if [ ! -f "$(SCHEMA_FILE)" ]; then \
-		echo "$(RED)✗ Error: $(SCHEMA_FILE) not found.$(RESET)"; \
-		exit 1; \
-	fi
-	@echo "$(CYAN)Creating local DB schema...$(RESET)"
-	node --env-file=$(ENV_DEV_FILE) scripts/db-init.js
-	@echo "$(GREEN)✓ Local schema ready$(RESET)"
+# Applies all pending migrations locally.
+#
+# Migrations are the single source of truth for DB structure.
+#
+# Safe to re-run:
+#   already-applied migrations are skipped automatically.
+db-local-migrate:
+	@echo "$(CYAN)Applying local database migrations...$(RESET)"
+	node --env-file=$(ENV_DEV_FILE) scripts/migrate.js
+	@echo "$(GREEN)✓ Local migrations complete$(RESET)"
 
 
-# Seeds local DB with standard tabs + skills.json.
+# Seeds local DB with starter tabs + skills.
+#
+# Safe to re-run:
+#   uses UPSERT logic.
 db-local-seed:
 	@if [ ! -f "$(SEED_FILE)" ]; then \
 		echo "$(RED)✗ Error: $(SEED_FILE) not found.$(RESET)"; \
@@ -497,39 +496,13 @@ db-local-seed:
 	@echo "$(GREEN)✓ Local seed complete$(RESET)"
 
 
-# Applies schema.sql to Turso production DB.
-#
-# Use this when production DB is new/reset.
-# Safe for CREATE TABLE IF NOT EXISTS schema.
-db-prod-schema:
-	@if [ ! -f "$(SCHEMA_FILE)" ]; then \
-		echo "$(RED)✗ Error: $(SCHEMA_FILE) not found.$(RESET)"; \
-		exit 1; \
-	fi
+# Opens Turso production shell.
+db-prod-shell:
 	@if ! command -v turso &> /dev/null; then \
 		echo "$(RED)✗ Error: Turso CLI not installed.$(RESET)"; \
 		exit 1; \
 	fi
-	@echo "$(CYAN)Applying schema to Turso DB: $(TURSO_DB_NAME)...$(RESET)"
-	turso db shell $(TURSO_DB_NAME) < $(SCHEMA_FILE)
-	@echo "$(GREEN)✓ Production schema applied$(RESET)"
-
-
-# Seeds Turso production DB using .env.production.
-#
-# This inserts/updates standard skill tabs and skills.json.
-db-prod-seed:
-	@if [ ! -f "$(ENV_PROD_FILE)" ]; then \
-		echo "$(RED)✗ Error: $(ENV_PROD_FILE) not found.$(RESET)"; \
-		exit 1; \
-	fi
-	@echo "$(CYAN)Seeding Turso production DB...$(RESET)"
-	node --env-file=$(ENV_PROD_FILE) $(SEED_FILE)
-	@echo "$(GREEN)✓ Production seed complete$(RESET)"
-
-db-prod-bootstrap:
-	@$(MAKE) db-prod-schema --no-print-directory
-	@$(MAKE) db-prod-seed --no-print-directory
+	turso db shell $(TURSO_DB_NAME)
 
 # Opens an interactive Turso shell for the production database.
 #

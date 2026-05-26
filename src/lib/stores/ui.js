@@ -176,7 +176,7 @@ export const bootWasSkipped = writable(false);
 //   - Manual/professional projects
 //
 // Read by:
-//   src/lib/data/projects.js → mergedProjectsStore / getMergedProjects()
+//   src/lib/data/projects.js → projectsStore / getProjects()
 export const projectsData = writable([]);
 
 // ── experienceData ────────────────────────────────────────────────
