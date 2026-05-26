@@ -6,7 +6,7 @@
 //   The server-side data gateway for the PUBLIC portfolio site.
 //   It runs on the server before public pages render.
 //
-//   This file loads the public display data from the database:
+//   This file loads public display data from the database:
 //     - projects
 //     - experience
 //     - skill tabs
@@ -26,7 +26,7 @@
 //     - hydrates stores/context for components
 //
 // CURRENT ARCHITECTURE:
-//   Database is the source of truth for public project display.
+//   Database is the source of truth for public portfolio content.
 //
 //   GitHub is no longer fetched on every public page load.
 //   Instead:
@@ -36,7 +36,7 @@
 //       → public site reads projects from DB
 //
 // WHY THIS IS BETTER:
-//   - Public pages render faster.
+//   - Public pages do not depend on GitHub API availability.
 //   - GitHub API rate limits do not affect visitors.
 //   - Private GitHub token usage stays limited to owner/server flows.
 //   - Project cards have one consistent source: the database.
@@ -64,36 +64,29 @@ import { getAllExperience } from '$lib/server/queries/experience.js';
 import { getAllTabs, getAllSkillsGrouped } from '$lib/server/queries/skills.js';
 import { getAllProjects } from '$lib/server/queries/projects.js';
 
-// ── Cache TTL ─────────────────────────────────────────────────────
-// 3600 seconds = 1 hour.
-//
-// NOTE:
-//   This layout is DB-backed. If you want owner edits to appear instantly
-//   on the public site after deployment, use no-store or a smaller TTL.
-//
-// CURRENT TRADEOFF:
-//   Cache keeps public pages fast and reduces server/database work.
-//   Hard refresh/redeploy can force fresh data when needed.
-const CACHE_MAX_AGE = 3600;
-
 // ── load ──────────────────────────────────────────────────────────
 // Runs on the server before public pages render.
 //
 // depends(...):
 //   Creates invalidation keys for SvelteKit.
-//   Client code can later call invalidate('app:projects') etc.
+//   Client code can later call invalidate('app:projects'),
+//   invalidate('app:experience'), or invalidate('app:skills')
 //   to force this load function to re-run.
+//
+// CACHE STRATEGY:
+//   This app is DB-managed from the Owner Interface.
 export async function load({ setHeaders, depends }) {
   depends('app:projects');
   depends('app:experience');
   depends('app:skills');
 
   // ── Cache Headers ──────────────────────────────────────────────
-  // These headers tell Vercel/CDN/browser how long this public layout
-  // response can be cached.
+  // no-store keeps production honest for DB-backed portfolio content.
+  // Without this, Vercel/CDN may serve old experience/projects/skills
+  // even after the Owner Interface successfully updates the database.
   try {
     setHeaders({
-      'Cache-Control': `public, max-age=${CACHE_MAX_AGE}, s-maxage=${CACHE_MAX_AGE}, stale-while-revalidate=${CACHE_MAX_AGE}`,
+      'Cache-Control': 'no-store',
     });
   } catch {
     // Some adapters/routes may already set headers.
@@ -110,6 +103,9 @@ export async function load({ setHeaders, depends }) {
 
   // ── Database Reads ──────────────────────────────────────────────
   // Fetch all public portfolio data in parallel.
+  //
+  // These queries are server-side only. The browser receives safe,
+  // already-shaped data, never DB credentials.
   try {
     [experience, skillTabs, skills, projects] = await Promise.all([
       getAllExperience(),
