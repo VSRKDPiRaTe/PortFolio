@@ -20,7 +20,7 @@
 //     4. returns the final page data
 
 import { error } from "@sveltejs/kit";
-import { mergeProjects, groups, badges } from "$lib/data/projects.js";
+import { groups, badges, getBySlug } from "$lib/data/projects.js";
 
 export async function load({ params, parent }) {
   // parent() gives access to data returned by +layout.server.js.
@@ -30,14 +30,10 @@ export async function load({ params, parent }) {
   //   - client-side navigation
   const data = await parent();
 
-  const projects = mergeProjects({
-    githubRepos: data.githubRepos ?? [],
-    customisedProjects: data.customisedRepos ?? [],
-    manualProjects: data.manualProjects ?? [],
-  });
+  const projects = data.projects ?? [];
 
   // Find project by slug — slug is the URL-friendly identifier
-  const project = projects.find((p) => p.slug === params.slug) ?? null;
+  const project = getBySlug(projects, params.slug);
 
   // No match → 404. SvelteKit renders its error page.
   if (!project) {

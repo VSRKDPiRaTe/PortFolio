@@ -3,31 +3,20 @@
 // ╚═══════════════════════════════════════════════════════════════════╝
 //
 // WHAT THIS FILE IS:
-//   One-time bootstrap script. Seeds the database with the minimum
-//   data needed for the portfolio to function before the owner
-//   has entered anything via the owner interface.
+//   Bootstrap seed script for reusable starter data.
 //
 // WHAT IS SEEDED:
-//   1. skill_tabs — the 9 industry-standard category headings.
-//      These are factual groupings that never change in meaning,
-//      only the owner can add/rename additional tabs later.
+//   1. skill_tabs
+//      Standard skill category headings.
 //
-//   2. skills (optional) — reads from skills.json
-//      if the file exists. This is a temporary convenience for the
-//      initial setup. Once the owner interface is working and the
-//      owner has entered real skills, this file can be deleted
-//      and skills will never be seeded from JSON again.
+//   2. skills.json
+//      Skill starter data.
+//      Re-running seed adds new skills and updates existing skill values.
 //
 // WHAT IS NOT SEEDED:
-//   experience  → entered manually via owner interface
-//   projects    → auto-synced from GitHub when owner opens /owner/projects
-//
-// HOW TO RUN:
-//   node --env-file=.env.development scripts/seed.js
-//
-// SAFE TO RE-RUN:
-//   All inserts use INSERT OR IGNORE — existing rows are never
-//   overwritten. Running this multiple times has no side effects.
+//   experience → entered via Owner Interface
+//   projects   → GitHub repos sync when owner opens /owner/projects
+//   analytics  → production traffic creates this
 
 import { createClient } from "@libsql/client";
 import { readFileSync, existsSync } from "fs";
@@ -57,9 +46,16 @@ async function seedTabs() {
   console.log("\nSeeding skill tabs...");
   for (const tab of STANDARD_TABS) {
     await db.execute({
-      sql: `INSERT OR IGNORE INTO skill_tabs (id, label, sort_order) VALUES (?, ?, ?)`,
+      sql: `
+        INSERT INTO skill_tabs (id, label, sort_order)
+        VALUES (?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          label = excluded.label,
+          sort_order = excluded.sort_order
+      `,
       args: [tab.id, tab.label, tab.sort_order],
     });
+
     console.log(`  ✓ ${tab.label}`);
   }
 }
@@ -68,7 +64,7 @@ async function seedTabs() {
 // Seeds from skills.json if it exists.
 // If the file does not exist, this step is skipped silently.
 async function seedSkills() {
-  const skillsPath = resolve("skills.json");
+  const skillsPath = resolve("scripts/skills.json");
 
   if (!existsSync(skillsPath)) {
     console.log("\nNo skills.json found — skipping skill seed.");
@@ -76,24 +72,41 @@ async function seedSkills() {
     return;
   }
 
-  const skillsData = JSON.parse(readFileSync(skillsPath, "utf-8"));
-  console.log("\nSeeding skills from skills.json...");
+  const skillsData = JSON.parse(readFileSync(skillsPath, 'utf-8'));
+  const skillsByTab = skillsData.skills ?? {};
 
-  for (const tab of skillsData.tabs ?? []) {
-    const tabSkills = skillsData.skills?.[tab.id] ?? [];
+  console.log('\nSeeding skills from skills.json...');
 
-    for (const [j, skill] of tabSkills.entries()) {
+  for (const tab of STANDARD_TABS) {
+    const tabSkills = skillsByTab[tab.id] ?? [];
+
+    for (const [index, skill] of tabSkills.entries()) {
       await db.execute({
-        sql: `INSERT OR IGNORE INTO skills
-                (tab_id, name, pct, primary_skill, exposure, sort_order)
-              VALUES (?, ?, ?, ?, ?, ?)`,
+        sql: `
+          INSERT INTO skills (
+            tab_id,
+            name,
+            pct,
+            primary_skill,
+            exposure,
+            sort_order,
+            updated_at
+          )
+          VALUES (?, ?, ?, ?, ?, ?, unixepoch())
+          ON CONFLICT(tab_id, name) DO UPDATE SET
+            pct = excluded.pct,
+            primary_skill = excluded.primary_skill,
+            exposure = excluded.exposure,
+            sort_order = excluded.sort_order,
+            updated_at = unixepoch()
+        `,
         args: [
           tab.id,
           skill.name,
           skill.pct ?? 80,
-          skill.primary ? 1 : 0,
+          skill.primary === false ? 0 : 1,
           skill.exposure ? 1 : 0,
-          j,
+          index,
         ],
       });
     }

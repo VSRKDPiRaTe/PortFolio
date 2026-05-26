@@ -421,7 +421,13 @@ body::after {
          rgba(0, 0, 0, 0.07) 3px, rgba(0, 0, 0, 0.07) 4px
          /* dark scan line */
       );
-   opacity: 0.35;
+   opacity: 0.18;
+
+   @media (min-width: 1024px) {
+      body::after {
+         opacity: 0.35;
+      }
+   }
 }
 
 

@@ -1,23 +1,31 @@
 <!--
   Footer.svelte
   ─────────────────────────────────────────────────────────────────
-  Svelte note: setInterval inside onMount, cleared in onDestroy.
-  Same pattern as React's useEffect with a cleanup return.
+  Svelte note:
+    setInterval runs inside onMount and is cleared in onDestroy.
+    Same pattern as React's useEffect with a cleanup return.
 
   SECRET OWNER ACCESS:
-    Clicking the heart ♥ 3 times within 2 seconds triggers navigation
-    to /owner-login. This is a hidden entry point — not visible in UI.
+    Triggers navigation to /owner-login. This is a hidden entry point.
     Real security is still handled by server-side auth.
 
-    Why heart?
-      - Natural, non-obvious UI element
-      - Always visible
-      - Low accidental trigger probability
+  DEPLOYMENT UPTIME:
+    SYS.UPTIME shows how long the current deployment/build has been alive.
+
+    Production:
+      Uses PUBLIC_DEPLOYED_AT from environment variables.
+      Example:
+        PUBLIC_DEPLOYED_AT=2026-04-27T00:00:00.000Z
+
+    Development:
+      If PUBLIC_DEPLOYED_AT is missing or invalid, it falls back to Date.now().
+      That means local dev behaves like the old version:
+        uptime = time since this browser tab/component mounted.
 -->
 <script>
   import { onMount, onDestroy } from "svelte";
   import { SITE_NAME } from "$lib/config.js";
-  import { goto } from "$app/navigation";
+  import { PUBLIC_DEPLOYED_AT, PUBLIC_BUILD_LABEL } from "$env/static/public";
 
   // ── Secret Entry Logic ──────────────────────────────────────────
   let secretClicks = 0;
@@ -27,32 +35,71 @@
     secretClicks += 1;
 
     clearTimeout(secretTimer);
+
+    // Reset click count if the owner does not complete 3 clicks quickly.
     secretTimer = setTimeout(() => {
       secretClicks = 0;
     }, 2000);
 
     if (secretClicks >= 3) {
       secretClicks = 0;
+
+      // Open in new tab so the public site remains open.
       window.open("/owner-login", "_blank", "noopener,noreferrer");
     }
   }
 
   // ── Uptime Counter ──────────────────────────────────────────────
   let uptime = "00:00:00";
-  const start = Date.now();
   let interval;
 
+  // PUBLIC_DEPLOYED_AT is injected at build/deploy time.
+  // If it is missing locally, Date.parse(undefined) returns NaN.
+  const deployedAt = Date.parse(PUBLIC_DEPLOYED_AT);
+
+  // Production:
+  //   start = deployment timestamp
+  //
+  // Development / fallback:
+  //   start = current browser time
+  const start = Number.isFinite(deployedAt) ? deployedAt : Date.now();
+
+  // Converts milliseconds into a readable uptime string.
+  //
+  // Under 1 day:
+  //   04:12:09
+  //
+  // Over 1 day:
+  //   2D 04:12:09
+  function formatUptime(ms) {
+    const total = Math.max(0, Math.floor(ms / 1000));
+
+    const days = Math.floor(total / 86400);
+    const hours = String(Math.floor((total % 86400) / 3600)).padStart(2, "0");
+    const minutes = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
+    const seconds = String(total % 60).padStart(2, "0");
+
+    return days > 0
+      ? `${days}D ${hours}:${minutes}:${seconds}`
+      : `${hours}:${minutes}:${seconds}`;
+  }
+
+  function tickUptime() {
+    uptime = formatUptime(Date.now() - start);
+  }
+
   onMount(() => {
-    interval = setInterval(() => {
-      const s = Math.floor((Date.now() - start) / 1000);
-      const h = String(Math.floor(s / 3600)).padStart(2, "0");
-      const m = String(Math.floor((s % 3600) / 60)).padStart(2, "0");
-      const sec = String(s % 60).padStart(2, "0");
-      uptime = `${h}:${m}:${sec}`;
-    }, 1000);
+    // Run once immediately so the footer does not wait 1 second
+    // before showing the correct uptime.
+    tickUptime();
+
+    interval = setInterval(tickUptime, 1000);
   });
 
-  onDestroy(() => clearInterval(interval));
+  onDestroy(() => {
+    clearInterval(interval);
+    clearTimeout(secretTimer);
+  });
 </script>
 
 <footer class="border-t border-white/10 py-8 bg-bg">
@@ -81,7 +128,7 @@
       class="font-mono text-[0.65rem] tracking-widest"
       style="color: rgba(168,184,216,0.25);"
     >
-      SYS.UPTIME: {uptime} // BUILD: v2.0.0-svelte
+      SYS.UPTIME: {uptime} // BUILD: {PUBLIC_BUILD_LABEL}
     </p>
   </div>
 </footer>

@@ -4,12 +4,12 @@
   TWO SECTIONS:
 
   1. GITHUB REPOS
-     All repos synced from GitHub. Each row shows live info.
+     All repos synced from GitHub into DB. Each row shows DB-backed synced info.
      Owner can:
        - Change badge (lightweight — does NOT set manually_updated)
        - CUSTOMISE → opens slide-in panel to override title/desc/tags/demo
          (sets manually_updated=1, main site uses DB data)
-       - RESET → clears overrides, main site uses live GitHub data again
+       - RESET → clears overrides, next sync refreshes DB-backed GitHub data
 
   2. MANUAL PROJECTS
      Professional/client work with no GitHub repo.
@@ -95,11 +95,11 @@
         p.desc,
         p.demo,
         p.manually_updated,
-        p.liveTitle,
-        p.liveDesc,
-        p.livePrivate,
+        p.private,
         p.stars,
         p.language,
+        p.pushedAt,
+        Array.isArray(p.tags) ? p.tags.join("|") : "",
       ]),
     );
   }
@@ -173,12 +173,12 @@
   function openGithubEdit(project) {
     editingGithub = project;
 
-    // Pre-fill with current DB values if customised, else live GitHub values
-    gTitle = project.manually_updated ? project.title : project.liveTitle;
-    gDesc = project.manually_updated ? project.desc : project.liveDesc;
-    gTags = project.manually_updated
-      ? project.tags.join(", ")
-      : project.liveTags.join(", ");
+    // GitHub data is already synced into DB.
+    // If manually_updated=false, these DB fields are the latest synced GitHub values.
+    // If manually_updated=true, these DB fields are owner overrides.
+    gTitle = project.title ?? "";
+    gDesc = project.desc ?? "";
+    gTags = Array.isArray(project.tags) ? project.tags.join(", ") : "";
     gDemo = project.demo ?? "";
     gBadge = getGithubBadge(project);
   }
@@ -214,9 +214,9 @@
       return {
         ...project,
         manually_updated: true,
-        title: title || project.liveTitle,
-        desc: desc || project.liveDesc,
-        tags: tags.length ? tags : project.liveTags,
+        title: title || project.title,
+        desc: desc || project.desc,
+        tags: tags.length ? tags : project.tags,
         demo: demo || null,
       };
     });
@@ -373,7 +373,7 @@
         <span class="legend-chip">TITLE = what shows on the main site</span>
         <span class="legend-chip">SOURCE = GitHub sync source</span>
         <span class="legend-chip"
-          >LIVE DESCRIPTION / TAGS = current GitHub values</span
+          >SYNCED DESCRIPTION / TAGS = latest DB-synced GitHub values</span
         >
         <span class="legend-chip">CUSTOMISED = owner override is active</span>
       </div>
@@ -386,7 +386,7 @@
         <div class="entry-info">
           <!-- Show live GitHub title unless customised -->
           <div class="entry-title">
-            {project.manually_updated ? project.title : project.liveTitle}
+            {project.title}
             {#if project.manually_updated}
               <span class="customised-badge">CUSTOMISED</span>
             {/if}
@@ -413,7 +413,7 @@
             >
             <span class="meta-chip"
               ><span class="meta-label">VISIBILITY</span>
-              {project.livePrivate ? "PRIVATE" : "PUBLIC"}</span
+              {project.private ? "PRIVATE" : "PUBLIC"}</span
             >
           </div>
 
@@ -421,18 +421,14 @@
             <div class="detail-block">
               <div class="detail-label">DISPLAY DESCRIPTION</div>
               <div class="detail-value">
-                {previewText(
-                  project.manually_updated ? project.desc : project.liveDesc,
-                )}
+                {previewText(project.desc)}
               </div>
             </div>
 
             <div class="detail-block">
               <div class="detail-label">DISPLAY TAGS</div>
               <div class="detail-value">
-                {previewTags(
-                  project.manually_updated ? project.tags : project.liveTags,
-                )}
+                {previewTags(project.tags)}
               </div>
             </div>
           </div>
@@ -661,7 +657,7 @@
   >
     <div class="form-panel">
       <div class="form-header">
-        <h2 class="form-title">CUSTOMISE: {editingGithub.liveTitle}</h2>
+        <h2 class="form-title">CUSTOMISE: {editingGithub.title}</h2>
         <button class="form-close" onclick={closeGithubEdit}>✕</button>
       </div>
       <p class="panel-note">
@@ -709,7 +705,7 @@
             class="field-input"
             name="title"
             bind:value={gTitle}
-            placeholder={editingGithub.liveTitle}
+            placeholder={editingGithub.title}
           />
           <div class="field-hint">Leave blank to use GitHub repo name.</div>
         </div>
@@ -722,7 +718,7 @@
             name="desc"
             bind:value={gDesc}
             rows="4"
-            placeholder={editingGithub.liveDesc || "Add a description..."}
+            placeholder={editingGithub.desc || "Add a description..."}
           ></textarea>
         </div>
 
@@ -733,7 +729,7 @@
             class="field-input"
             name="tags"
             bind:value={gTags}
-            placeholder={editingGithub.liveTags.join(", ")}
+            placeholder={editingGithub.tags.join(", ")}
           />
           <div class="field-hint">
             Comma-separated. Overrides GitHub topics + language.

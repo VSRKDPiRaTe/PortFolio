@@ -1,11 +1,13 @@
 // ╔═══════════════════════════════════════════════════════════════════╗
-// ║  src/lib/stores/ui.js — Global UI State                          ║
+// ║  src/lib/stores/ui.js — Global UI + Public Data State             ║
 // ╚═══════════════════════════════════════════════════════════════════╝
 //
 // WHAT THIS FILE IS:
-//   A centralised collection of Svelte stores for global UI state.
-//   Any component or module in the application can read or write these
-//   stores without prop drilling or threading data through intermediaries.
+//   A centralised collection of Svelte stores for global UI state and
+//   public portfolio data.
+//
+//   Any component or plain JavaScript module can import these stores
+//   without prop drilling or threading data through intermediate files.
 //
 // WHAT IS A SVELTE STORE?
 //   A store is a reactive container for a value that lives outside components.
@@ -52,7 +54,21 @@
 //   bootComplete    → whether the CRT boot animation has fully finished
 //   sequenceDone    → whether BootScreen lines/progress sequence is done
 //   bootWasSkipped  → whether boot was skipped (session already booted)
-//   githubRepos     → GitHub repos fetched server-side, distributed here
+//
+//   projectsData    → all public projects from DB
+//   experienceData  → all experience entries from DB
+//   skillTabsData   → skill tab headings from DB
+//   skillsData      → skills grouped by tab from DB
+//
+// CURRENT DATA ARCHITECTURE:
+//   Database is the public site's source of truth.
+//
+//   GitHub API is now an ingestion source only:
+//     /owner/projects
+//       → fetch GitHub repos
+//       → sync into projects table
+//       → public site reads projectsData from DB
+//
 
 import { writable } from 'svelte/store';
 
@@ -142,50 +158,53 @@ export const bootWasSkipped = writable(false);
 
 
 
-
-// ── Data Stores ───────────────────────────────────────────────────
-
-
-// Set by +layout.svelte $effect after server data arrives.
-// Read by data layer modules via get() — stores bridge the gap
-// between server-fetched data and plain JS modules that cannot
-// use getContext (context is Svelte-component-only).
-
-// ── githubRepos ───────────────────────────────────────────────────
-// Holds the array of GitHub repositories fetched server-side.
-// Acts as the bridge between server-loaded data and plain JS modules.
+// ── Public Data Stores ─────────────────────────────────────────────
+// Set by:
+//   src/routes/(site)/+layout.svelte
 //
-// Written by: +layout.svelte via $effect when server data arrives
-//             githubReposStore.set(data.githubRepos ?? [])
-// Read by:    projects.js → getMergedProjects() via get(githubReposStore)
-//             stats.js    → STATS derived store reacts to changes here
+// Source:
+//   src/routes/(site)/+layout.server.js reads from DB and passes data down.
 //
-// Why a store instead of context?
-//   getContext() only works inside Svelte component scripts.
-//   projects.js and stats.js are plain JavaScript modules.
-//   A Svelte store is accessible from anywhere — components AND modules.
-//   This store is the only way to pass server-fetched data into plain modules.
-//
-// Default: [] (empty until +layout.svelte populates it after server fetch)
-export const githubRepos = writable([]);
+// WHY STORES:
+//   Plain JavaScript modules such as projects.js, experience.js, skills.js,
+//   and stats.js cannot use Svelte context. Stores let those modules read
+//   the latest public data safely.
 
-// Experience entries from DB
-// Read by: experience.js getExperience()
+// ── projectsData ──────────────────────────────────────────────────
+// All projects from DB:
+//   - GitHub-synced projects
+//   - Manual/professional projects
+//
+// Read by:
+//   src/lib/data/projects.js → mergedProjectsStore / getMergedProjects()
+export const projectsData = writable([]);
+
+// ── experienceData ────────────────────────────────────────────────
+// Experience entries from DB.
+//
+// Read by:
+//   src/lib/data/experience.js → getExperience()
+//   src/lib/data/stats.js      → years/experience calculations
 export const experienceData = writable([]);
- 
-// Skill tabs from DB — array of { id, label }
-// Read by: skills.js getSkillTabs()
-export const skillTabsData = writable([]);
- 
-// Skills grouped by tab from DB — { languages: [...], frontend: [...], ... }
-// Read by: skills.js getSkills()
-// Read by: stats.js for techCount
-export const skillsData = writable({});
- 
-// Manual projects from DB — professional work + GitHub overrides
-// Read by: projects.js getMergedProjects() as manualProjects
-export const manualProjectsData = writable([]);
 
-// GitHub repos with manually_updated=1 — these override GitHub data with DB data
-// Read by: projects.js getMergedProjects() as customisedRepos
-export const customisedRepos    = writable([]);  // DB rows with manually_updated=1
+// ── skillTabsData ─────────────────────────────────────────────────
+// Skill tabs from DB.
+// Shape: [{ id, label, sort_order }]
+//
+// Read by:
+//   src/lib/data/skills.js → getSkillTabs()
+export const skillTabsData = writable([]);
+
+// ── skillsData ────────────────────────────────────────────────────
+// Skills grouped by tab.
+// Shape:
+//   {
+//     languages: [...],
+//     frontend: [...],
+//     ...
+//   }
+//
+// Read by:
+//   src/lib/data/skills.js → getSkills()
+//   src/lib/data/stats.js  → technology count
+export const skillsData = writable({});

@@ -21,9 +21,16 @@
 #   make sync-env               push .env.production vars → Vercel
 #   make deploy msg="..."       full deploy: env + commit + push
 #   make deploy-preview         deploy to preview URL only (safe)
+#   make sync-github-secrets    push Turso secrets from .env.production → GitHub Actions
 #   make repo-settings          update GitHub repo description/homepage/topics
 #   make repo-open              open GitHub repo in browser
 #   make git-status             show current git status at a glance
+#   make db-local-reset         delete local.db + recreate schema + seed
+#   make db-local-init          create local DB schema from schema.sql
+#   make db-local-seed          seed local DB tabs/skills
+#   make db-prod-schema         apply schema.sql to Turso production DB
+#   make db-prod-seed           seed Turso production DB tabs/skills
+#   make db-prod-bootstrap      Apply schema + seed to Turso production DB
 #   make db-prod-shell          open Turso production DB shell
 #
 # IMPORTANT:
@@ -48,6 +55,10 @@ BRANCH        := main
 ENV_PROD_FILE := .env.production
 ENV_DEV_FILE  := .env.development
 BUILD_DIR     := .svelte-kit
+
+LOCAL_DB_FILE   := local.db
+SCHEMA_FILE     := scripts/schema.sql
+SEED_FILE       := scripts/seed.js
 
 # ── Turso Database ─────────────────────────────────────────────────
 # Used by:
@@ -82,7 +93,7 @@ RESET  := $(shell tput sgr0)
 # Make would think the target is already satisfied and skip it.
 # Rule: every target that isn't generating a real file goes here.
 
-.PHONY: help dev check build preview clean sync-env deploy deploy-preview git-status repo-settings repo-open db-prod-shell
+.PHONY: help dev check build preview clean sync-env deploy deploy-preview git-status sync-github-secrets repo-settings repo-open db-local-reset db-local-init db-local-seed db-prod-schema db-prod-seed db-prod-bootstrap db-prod-shell
 
 
 # ════════════════════════════════════════════════════════════════════
@@ -109,6 +120,7 @@ help:
 	@echo "  $(GREEN)make deploy msg='feat: ...'$(RESET)  Check + build + sync env + commit + push"
 	@echo ""
 	@echo "$(BOLD)GitHub Repo Settings$(RESET)"
+	@echo "  $(GREEN)make sync-github-secrets$(RESET)    Push Turso secrets from .env.production → GitHub Actions"
 	@echo "  $(GREEN)make repo-settings$(RESET)          Update repo description, website, and topics"
 	@echo "  $(GREEN)make repo-open$(RESET)              Open GitHub repo in browser"
 	@echo ""
@@ -116,6 +128,12 @@ help:
 	@echo "  $(GREEN)make git-status$(RESET)             Show branch, changed files, recent commits"
 	@echo ""
 	@echo "$(BOLD)Database$(RESET)"
+	@echo "  $(GREEN)make db-local-reset$(RESET)         Delete local.db + recreate schema + seed"
+	@echo "  $(GREEN)make db-local-init$(RESET)          Create local DB schema from schema.sql"
+	@echo "  $(GREEN)make db-local-seed$(RESET)          Seed local DB tabs/skills"
+	@echo "  $(GREEN)make db-prod-schema$(RESET)         Apply schema.sql to Turso production DB"
+	@echo "  $(GREEN)make db-prod-seed$(RESET)           Seed Turso production DB tabs/skills"
+	@echo "  $(GREEN)make db-prod-bootstrap$(RESET)      Apply schema + seed to Turso production DB"
 	@echo "  $(GREEN)make db-prod-shell$(RESET)          Open Turso production DB shell"
 	@echo ""
 	@echo "$(BOLD)Examples$(RESET)"
@@ -216,10 +234,16 @@ sync-env:
 		exit 1; \
 	fi
 	@echo "$(CYAN)Reading env keys from $(ENV_PROD_FILE)...$(RESET)"
-	@while IFS='=' read -r key value || [ -n "$$key" ]; do \
+	@while IFS= read -r line || [ -n "$$line" ]; do \
+		line="$$(echo "$$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$$//')"; \
+		if [[ -z "$$line" || "$$line" == \#* || "$$line" == //* || "$$line" != *=* ]]; then \
+			continue; \
+		fi; \
+		key="$${line%%=*}"; \
+		value="$${line#*=}"; \
 		key="$$(echo "$$key" | xargs)"; \
-		value="$$(echo "$$value" | sed -e 's/^"//' -e 's/"$$//' -e "s/^'//" -e "s/'$$//")"; \
-		if [[ -z "$$key" || "$$key" == \#* ]]; then \
+		value="$$(echo "$$value" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$$//' -e 's/^"//' -e 's/"$$//' -e "s/^'//" -e "s/'$$//")"; \
+		if [[ -z "$$key" ]]; then \
 			continue; \
 		fi; \
 		echo "$(YELLOW)→ Syncing $$key$(RESET)"; \
@@ -240,9 +264,10 @@ sync-env:
 #   2. Runs check.
 #   3. Runs build.
 #   4. Syncs .env.production to Vercel.
-#   5. Stages code.
-#   6. Commits code.
-#   7. Pushes to GitHub.
+#   5. Syncs GitHub Actions Turso secrets (TURSO_DB_URL + TURSO_AUTH_TOKEN).
+#   6. Stages code.
+#   7. Commits code.
+#   8. Pushes to GitHub.
 #
 # WHAT HAPPENS AFTER PUSH:
 #   Vercel sees the GitHub push and automatically deploys production.
@@ -266,15 +291,17 @@ deploy:
 	@echo ""
 	@echo "$(BOLD)$(CYAN)Starting production deploy pipeline...$(RESET)"
 	@echo ""
-	@echo "$(CYAN)Step 1/5 — Check + build...$(RESET)"
+	@echo "$(CYAN)Step 1/6 — Check + build...$(RESET)"
 	@$(MAKE) build --no-print-directory
-	@echo "$(CYAN)Step 2/5 — Sync Vercel env vars...$(RESET)"
+	@echo "$(CYAN)Step 2/6 — Sync Vercel env vars...$(RESET)"
 	@$(MAKE) sync-env --no-print-directory
-	@echo "$(CYAN)Step 3/5 — Stage changes...$(RESET)"
+	@echo "$(CYAN)Step 3/6 — Sync GitHub Actions secrets...$(RESET)"
+	@$(MAKE) sync-github-secrets --no-print-directory
+	@echo "$(CYAN)Step 4/6 — Stage changes...$(RESET)"
 	git add .
-	@echo "$(CYAN)Step 4/5 — Commit changes...$(RESET)"
+	@echo "$(CYAN)Step 5/6 — Commit changes...$(RESET)"
 	git commit -m "$(msg)"
-	@echo "$(CYAN)Step 5/5 — Push to GitHub branch: $(BRANCH)...$(RESET)"
+	@echo "$(CYAN)Step 6/6 — Push to GitHub branch: $(BRANCH)...$(RESET)"
 	git push origin $(BRANCH)
 	@echo ""
 	@echo "$(GREEN)$(BOLD)✓ Push complete. Vercel deployment triggered.$(RESET)"
@@ -371,6 +398,41 @@ repo-open:
 	fi
 	gh repo view $(GITHUB_REPO) --web
 
+# Pushes only the GitHub Actions secrets needed by the Turso bootstrap workflow.
+#
+# WHY ONLY THESE TWO:
+#   GitHub Actions only needs DB access to run:
+#     scripts/schema.sql
+#     scripts/seed.js
+#
+#   Vercel still receives the full .env.production through:
+#     make sync-env
+#
+# Requires:
+#   gh CLI installed and logged in:
+#     gh auth login
+sync-github-secrets:
+	@if [ ! -f "$(ENV_PROD_FILE)" ]; then \
+		echo "$(RED)✗ Error: $(ENV_PROD_FILE) not found.$(RESET)"; \
+		exit 1; \
+	fi
+	@if ! command -v gh &> /dev/null; then \
+		echo "$(RED)✗ Error: GitHub CLI not installed.$(RESET)"; \
+		echo "  Install it: https://cli.github.com"; \
+		exit 1; \
+	fi
+	@echo "$(CYAN)Syncing Turso secrets → GitHub Actions...$(RESET)"
+	@TURSO_DB_URL_VALUE="$$(grep -E '^[[:space:]]*TURSO_DB_URL[[:space:]]*=' "$(ENV_PROD_FILE)" | tail -n 1 | sed -E 's/^[^=]*=//; s/^[[:space:]]*//; s/[[:space:]]*$$//; s/^"//; s/"$$//; s/^'\''//; s/'\''$$//')"; \
+	TURSO_AUTH_TOKEN_VALUE="$$(grep -E '^[[:space:]]*TURSO_AUTH_TOKEN[[:space:]]*=' "$(ENV_PROD_FILE)" | tail -n 1 | sed -E 's/^[^=]*=//; s/^[[:space:]]*//; s/[[:space:]]*$$//; s/^"//; s/"$$//; s/^'\''//; s/'\''$$//')"; \
+	if [ -z "$$TURSO_DB_URL_VALUE" ] || [ -z "$$TURSO_AUTH_TOKEN_VALUE" ]; then \
+		echo "$(RED)✗ Error: TURSO_DB_URL or TURSO_AUTH_TOKEN missing in $(ENV_PROD_FILE).$(RESET)"; \
+		exit 1; \
+	fi; \
+	echo "$(YELLOW)→ Syncing TURSO_DB_URL$(RESET)"; \
+	gh secret set TURSO_DB_URL --repo "$(GITHUB_REPO)" --body "$$TURSO_DB_URL_VALUE"; \
+	echo "$(YELLOW)→ Syncing TURSO_AUTH_TOKEN$(RESET)"; \
+	gh secret set TURSO_AUTH_TOKEN --repo "$(GITHUB_REPO)" --body "$$TURSO_AUTH_TOKEN_VALUE"
+	@echo "$(GREEN)✓ GitHub Actions Turso secrets synced$(RESET)"
 
 # ════════════════════════════════════════════════════════════════════
 # GIT STATUS
@@ -394,8 +456,80 @@ git-status:
 
 
 # ════════════════════════════════════════════════════════════════════
-# TURSO DATABASE
+# DATABASE
 # ════════════════════════════════════════════════════════════════════
+# Recreates local.db from scratch.
+#
+# Flow:
+#   1. Delete local.db
+#   2. Run schema.sql
+#   3. Run seed.js
+#
+# Use this when you want a clean local database that matches the current
+# schema and starter skills.
+db-local-reset:
+	@echo "$(YELLOW)Resetting local database: $(LOCAL_DB_FILE)...$(RESET)"
+	rm -f $(LOCAL_DB_FILE)
+	@$(MAKE) db-local-init --no-print-directory
+	@$(MAKE) db-local-seed --no-print-directory
+	@echo "$(GREEN)✓ Local DB reset complete$(RESET)"
+
+
+# Creates local DB tables from scripts/schema.sql.
+db-local-init:
+	@if [ ! -f "$(SCHEMA_FILE)" ]; then \
+		echo "$(RED)✗ Error: $(SCHEMA_FILE) not found.$(RESET)"; \
+		exit 1; \
+	fi
+	@echo "$(CYAN)Creating local DB schema...$(RESET)"
+	node --env-file=$(ENV_DEV_FILE) scripts/db-init.js
+	@echo "$(GREEN)✓ Local schema ready$(RESET)"
+
+
+# Seeds local DB with standard tabs + skills.json.
+db-local-seed:
+	@if [ ! -f "$(SEED_FILE)" ]; then \
+		echo "$(RED)✗ Error: $(SEED_FILE) not found.$(RESET)"; \
+		exit 1; \
+	fi
+	@echo "$(CYAN)Seeding local DB...$(RESET)"
+	node --env-file=$(ENV_DEV_FILE) $(SEED_FILE)
+	@echo "$(GREEN)✓ Local seed complete$(RESET)"
+
+
+# Applies schema.sql to Turso production DB.
+#
+# Use this when production DB is new/reset.
+# Safe for CREATE TABLE IF NOT EXISTS schema.
+db-prod-schema:
+	@if [ ! -f "$(SCHEMA_FILE)" ]; then \
+		echo "$(RED)✗ Error: $(SCHEMA_FILE) not found.$(RESET)"; \
+		exit 1; \
+	fi
+	@if ! command -v turso &> /dev/null; then \
+		echo "$(RED)✗ Error: Turso CLI not installed.$(RESET)"; \
+		exit 1; \
+	fi
+	@echo "$(CYAN)Applying schema to Turso DB: $(TURSO_DB_NAME)...$(RESET)"
+	turso db shell $(TURSO_DB_NAME) < $(SCHEMA_FILE)
+	@echo "$(GREEN)✓ Production schema applied$(RESET)"
+
+
+# Seeds Turso production DB using .env.production.
+#
+# This inserts/updates standard skill tabs and skills.json.
+db-prod-seed:
+	@if [ ! -f "$(ENV_PROD_FILE)" ]; then \
+		echo "$(RED)✗ Error: $(ENV_PROD_FILE) not found.$(RESET)"; \
+		exit 1; \
+	fi
+	@echo "$(CYAN)Seeding Turso production DB...$(RESET)"
+	node --env-file=$(ENV_PROD_FILE) $(SEED_FILE)
+	@echo "$(GREEN)✓ Production seed complete$(RESET)"
+
+db-prod-bootstrap:
+	@$(MAKE) db-prod-schema --no-print-directory
+	@$(MAKE) db-prod-seed --no-print-directory
 
 # Opens an interactive Turso shell for the production database.
 #

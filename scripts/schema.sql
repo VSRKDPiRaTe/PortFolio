@@ -163,6 +163,11 @@ CREATE TABLE IF NOT EXISTS projects (
   demo             TEXT,
   private          INTEGER NOT NULL DEFAULT 0,
   company          TEXT,
+  language         TEXT,
+  stars            INTEGER NOT NULL DEFAULT 0,
+  pushedAt         TEXT,
+  createdAt        TEXT,
+  archived         INTEGER NOT NULL DEFAULT 0,
   sort_order       INTEGER NOT NULL DEFAULT 0,
   created_at       INTEGER NOT NULL DEFAULT (unixepoch()),
   updated_at       INTEGER NOT NULL DEFAULT (unixepoch())
@@ -247,10 +252,14 @@ CREATE TABLE IF NOT EXISTS visitor_pageviews (
 -- experience and skills are always fetched ordered by sort_order.
 -- skills are always filtered by tab_id before being ordered.
 -- projects are filtered by source and group_id in owner interface.
-CREATE INDEX IF NOT EXISTS idx_experience_sort  ON experience(sort_order);
-CREATE INDEX IF NOT EXISTS idx_skills_tab       ON skills(tab_id, sort_order);
-CREATE INDEX IF NOT EXISTS idx_projects_group   ON projects(group_id, sort_order);
-CREATE INDEX IF NOT EXISTS idx_projects_source  ON projects(source, manually_updated);
+CREATE INDEX IF NOT EXISTS idx_experience_sort      ON experience(sort_order);
+CREATE INDEX IF NOT EXISTS idx_skills_tab           ON skills(tab_id, sort_order);
+CREATE INDEX IF NOT EXISTS idx_projects_group       ON projects(group_id, sort_order);
+CREATE INDEX IF NOT EXISTS idx_projects_source      ON projects(source, manually_updated);
+CREATE INDEX IF NOT EXISTS idx_projects_github_id   ON projects(github_id);
+CREATE INDEX IF NOT EXISTS idx_projects_updated_at  ON projects(updated_at);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_skills_tab_name
+  ON skills(tab_id, name);
 
 -- ── Visitor Analytics Indexes ─────────────────────────────────────
 -- Speeds up owner dashboard analytics queries.
@@ -292,3 +301,4 @@ CREATE INDEX IF NOT EXISTS idx_visitor_pageviews_key
 
 CREATE INDEX IF NOT EXISTS idx_visitor_sessions_country
   ON visitor_sessions(country);
+

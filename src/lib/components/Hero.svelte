@@ -337,14 +337,16 @@
   </div>
 
   <!-- ── Decorative Orbit Ring ─────────────────────────────────
-    Hidden on mobile (hidden lg:block) — too large for small screens.
+    Visible on all screen sizes.
+    On mobile it becomes smaller and subtle so the avatar still appears
+    without overpowering the hero text.
     Three concentric rings with different animation speeds/directions.
     Two orbital dots that follow the ring paths.
     Center avatar circle with initials.
   ──────────────────────────────────────────────────────────── -->
   <div
-    class="orbit-ring hidden lg:block absolute right-[6%] top-1/2 -translate-y-1/2 pointer-events-none"
-    style="width: clamp(280px, 34vw, 460px); aspect-ratio: 1;"
+    class="orbit-ring absolute right-4 top-28 pointer-events-none sm:right-8 sm:top-24 lg:right-[6%] lg:top-1/2 lg:-translate-y-1/2"
+    style="width: clamp(150px, 42vw, 460px); aspect-ratio: 1;"
   >
     <!-- Outer ring — clockwise slow spin -->
     <div
@@ -479,7 +481,9 @@
     image-rendering: pixelated;
     image-rendering: crisp-edges;
 
-    filter: contrast(1.25) brightness(0.85) saturate(1.35);
+    filter: brightness(1.12)
+            contrast(1.18)
+            saturate(1.22);
   }
 
   /* Cyan/magenta colour blend layer */
