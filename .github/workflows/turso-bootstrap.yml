@@ -28,14 +28,22 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Turso CLI
-        run: curl -sSfL https://get.tur.so/install.sh | bash
+      - name: Verify required secrets
+        run: |
+          if [ -z "$TURSO_DB_URL" ]; then
+            echo "TURSO_DB_URL is missing"
+            exit 1
+          fi
 
-      - name: Add Turso CLI to PATH
-        run: echo "$HOME/.turso" >> $GITHUB_PATH
+          if [ -z "$TURSO_AUTH_TOKEN" ]; then
+            echo "TURSO_AUTH_TOKEN is missing"
+            exit 1
+          fi
+
+          echo "Turso secrets are present"
 
       - name: Apply database schema
-        run: turso db shell portfolio < scripts/schema.sql
+        run: node scripts/db-init.js
 
       - name: Seed database
         run: node scripts/seed.js
